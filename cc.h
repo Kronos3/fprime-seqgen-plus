@@ -31,33 +31,8 @@ namespace cc
         uint32_t line;
         uint32_t start_col;
 
-        ASTValue(const std::initializer_list<ASTValue*>& values)
-        {
-            if (values.size() == 0)
-            {
-                throw Exception("This ASTValue constructor requires more than more argument");
-            }
-
-            line = -1;
-            start_col = -1;
-
-            for (const auto* v : values)
-            {
-                if (v->line < line)
-                {
-                    line = v->line;
-                }
-
-                if (v->start_col < start_col)
-                {
-                    start_col = v->start_col;
-                }
-            }
-        }
-        explicit ASTValue(const TokenPosition* position) :
-        line(position->line), start_col(position->start_col) {}
-
-        ASTValue(uint32_t line, uint32_t start_col) : line(line), start_col(start_col) {}
+        explicit ASTValue(const ASTValue* v): line(v->line), start_col(v->start_col) {}
+        explicit ASTValue(const TokenPosition* position) : line(position->line), start_col(position->start_col) {}
 
         typedef void (*TraverseCB)(ASTValue*, Context* ctx, void*);
         virtual void traverse(TraverseCB cb, Context* ctx, void* data) { cb(this, ctx, data); };
@@ -112,20 +87,20 @@ namespace cc
     struct Buildable : public ASTValue
     {
         virtual void add(Context* ctx, IRBuilder &IRB) const = 0;
-        Buildable(const std::initializer_list<ASTValue*>& values) : ASTValue(values) {}
+        explicit Buildable(const ASTValue* values) : ASTValue(values) {}
         explicit Buildable(const TokenPosition* position) : ASTValue(position) {}
     };
 
     struct Expression : public ASTValue
     {
-        Expression(const std::initializer_list<ASTValue*>& values) : ASTValue(values) {}
+        explicit Expression(const ASTValue* values) : ASTValue(values) {}
         explicit Expression(const ASTValue::TokenPosition* position) : ASTValue(position) {}
         virtual IR* get(Context* ctx, IRBuilder &IRB) const = 0;
     };
     
     struct Statement : public Buildable
     {
-        Statement(const std::initializer_list<ASTValue*>& values) : Buildable(values) {}
+        explicit Statement(const ASTValue* values) : Buildable(values) {}
         explicit Statement(const ASTValue::TokenPosition* position) : Buildable(position) {}
     };
     
@@ -134,7 +109,7 @@ namespace cc
         Expression* conditional;
         Statement* body;
         explicit Loop(Expression* conditional)
-        : Statement({conditional}), conditional(conditional), body(nullptr) {}
+        : Statement(conditional), conditional(conditional), body(nullptr) {}
 
         void traverse(TraverseCB cb, Context* ctx, void* data) override;
 
@@ -174,7 +149,7 @@ namespace cc
         Statement* self;
         MultiStatement* next;
         explicit MultiStatement(Statement* self) :
-        Statement({self}), self(self), next(nullptr) {}
+        Statement(self), self(self), next(nullptr) {}
 
         ~MultiStatement() override
         {
@@ -186,82 +161,12 @@ namespace cc
         void add(Context* ctx, IRBuilder &IRB) const override;
     };
 
-    struct Arguments : ASTValue
-    {
-        TypeDecl* decl;
-        Arguments* next;
-
-        explicit Arguments(TypeDecl* decl) :
-        ASTValue({decl}), decl(decl), next(nullptr) {}
-        ~Arguments() override
-        {
-            delete decl;
-            delete next;
-        }
-
-        void traverse(TraverseCB cb, Context* ctx, void* data) override;
-    };
-
-    struct ASTGlobal : public Buildable
-    {
-        Global* symbol;
-        ASTGlobal* next;
-
-        ASTGlobal(const std::initializer_list<ASTValue*>& values) : Buildable(values), next(nullptr) {}
-        explicit ASTGlobal(const TokenPosition* position) : Buildable(position), next(nullptr) {}
-
-        ~ASTGlobal() override
-        {
-            delete next;
-        }
-    };
-
-    struct ASTFunction : public ASTGlobal
-    {
-        std::string name;
-        const Type* return_type;
-        Arguments* args;
-        MultiStatement* body;
-
-        ASTFunction(const TokenPosition* position, const Type* return_type, const char* name_, Arguments* args, MultiStatement* body)
-        : ASTGlobal(position), return_type(return_type), args(args), body(body)
-        {
-            TAKE_STRING(name, name_);
-        }
-
-        void traverse(TraverseCB cb, Context* ctx, void* data) override;
-        void add(Context* ctx, IRBuilder &IRB) const override;
-
-        ~ASTFunction() override
-        {
-            delete args;
-            delete body;
-        }
-
-        void resolution_pass(Context* context) override;
-    };
-
-    struct ASTGlobalVariable : ASTGlobal
-    {
-        TypeDecl* decl;
-        Expression* initializer;
-        Variable* variable;
-
-        explicit ASTGlobalVariable(TypeDecl* decl, Expression* initializer = nullptr) :
-            ASTGlobal({decl}), decl(decl), variable(nullptr), initializer(initializer) {}
-
-        void traverse(TraverseCB cb, Context* ctx, void* data) override;
-        void add(Context* ctx, IRBuilder &IRB) const override;
-
-        void resolution_pass(Context* context) override;
-    };
-
     struct Decl : public Statement
     {
         TypeDecl* decl;
 
         explicit Decl(TypeDecl* decl) :
-                Statement({decl}), decl(decl) {}
+                Statement(decl), decl(decl) {}
         ~Decl() override
         {
             delete decl;
@@ -292,7 +197,7 @@ namespace cc
     {
         Expression* expr;
         explicit Eval(Expression* expr) :
-                Statement({expr}), expr(expr) {}
+                Statement(expr), expr(expr) {}
 
         ~Eval() override
         {
@@ -310,7 +215,7 @@ namespace cc
         Statement* else_stmt;
 
         explicit If(Expression* clause) :
-                Statement({clause}), clause(clause), then_stmt(nullptr), else_stmt(nullptr) {}
+                Statement(clause), clause(clause), then_stmt(nullptr), else_stmt(nullptr) {}
         ~If() override
         {
             delete clause;
@@ -378,7 +283,7 @@ namespace cc
         binary_operator_t op;
 
         BinaryExpr(Expression* a, Expression* b, binary_operator_t op)
-                : Expression({a}), a(a), b(b), op(op) {}
+                : Expression(a), a(a), b(b), op(op) {}
 
         ~BinaryExpr() override
         {
@@ -405,7 +310,7 @@ namespace cc
         Expression* operand;
         unary_operator_t op;
         UnaryExpr(Expression* operand, unary_operator_t op) :
-                Expression({operand}), operand(operand), op(op) {}
+                Expression(operand), operand(operand), op(op) {}
         ~UnaryExpr() override
         {
             delete operand;
@@ -460,7 +365,7 @@ namespace cc
         CallArguments* next;
 
         explicit CallArguments(Expression* value) :
-        ASTValue({value}), value(value), next(nullptr) {}
+        ASTValue(value), value(value), next(nullptr) {}
         ~CallArguments() override
         {
             delete value;
@@ -495,7 +400,7 @@ namespace cc
         Expression* sink;
         Expression* value;
         AssignExpr(Expression* sink, Expression* value) :
-                Expression({sink}), sink(sink), value(value) {}
+                Expression(sink), sink(sink), value(value) {}
 
         ~AssignExpr() override
         {
@@ -505,6 +410,76 @@ namespace cc
 
         void traverse(TraverseCB cb, Context* ctx, void* data) override;
         IR* get(Context* ctx, IRBuilder &IRB) const override;
+    };
+
+    struct Arguments : ASTValue
+    {
+        TypeDecl* decl;
+        Arguments* next;
+
+        explicit Arguments(TypeDecl* decl) :
+                ASTValue(decl), decl(decl), next(nullptr) {}
+        ~Arguments() override
+        {
+            delete decl;
+            delete next;
+        }
+
+        void traverse(TraverseCB cb, Context* ctx, void* data) override;
+    };
+
+    struct ASTGlobal : public Buildable
+    {
+        Global* symbol;
+        ASTGlobal* next;
+
+        explicit ASTGlobal(const ASTValue* values) : Buildable(values), next(nullptr), symbol(nullptr) {}
+        explicit ASTGlobal(const TokenPosition* position) : Buildable(position), next(nullptr), symbol(nullptr) {}
+
+        ~ASTGlobal() override
+        {
+            delete next;
+        }
+    };
+
+    struct ASTFunction : public ASTGlobal
+    {
+        std::string name;
+        const Type* return_type;
+        Arguments* args;
+        MultiStatement* body;
+
+        ASTFunction(const TokenPosition* position, const Type* return_type, const char* name_, Arguments* args, MultiStatement* body)
+                : ASTGlobal(position), return_type(return_type), args(args), body(body)
+        {
+            TAKE_STRING(name, name_);
+        }
+
+        void traverse(TraverseCB cb, Context* ctx, void* data) override;
+        void add(Context* ctx, IRBuilder &IRB) const override;
+
+        ~ASTFunction() override
+        {
+            delete args;
+            delete body;
+        }
+
+        void resolution_pass(Context* context) override;
+    };
+
+    struct ASTGlobalVariable : ASTGlobal
+    {
+        TypeDecl* decl;
+        Expression* initializer;
+        Variable* variable;
+
+        explicit ASTGlobalVariable(TypeDecl* decl, Expression* initializer = nullptr) :
+                ASTGlobal(decl), decl(decl), variable(nullptr), initializer(initializer) {}
+
+        void traverse(TraverseCB cb, Context* ctx, void* data) override;
+        void add(Context* ctx, IRBuilder &IRB) const override;
+
+        void resolution_pass(Context* context) override;
     };
 }
 
