@@ -1,0 +1,3 @@
+[submodule "neoast"]
+	path = neoast
+	url = https://github.com/AutoGentoo/neoast.git
