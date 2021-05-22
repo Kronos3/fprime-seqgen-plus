@@ -3,10 +3,6 @@
 
 namespace cc
 {
-#define PERFORM_TRAVERSAL(field) do { \
-    (field)->traverse(cb, build_scope, data);    \
-} while(0)
-
     void Loop::traverse(TraverseCB cb, Context* ctx, void* data)
     {
         conditional->traverse(cb, ctx, data);
@@ -136,18 +132,6 @@ namespace cc
         sink->traverse(cb, ctx, data);
         value->traverse(cb, ctx, data);
         cb(this, ctx, data);
-    }
-
-    static void resolution_pass_cb(ASTValue* self, Context* ctx)
-    {
-        self->resolution_pass(ctx);
-    }
-
-    void perform_resolution(ASTValue* self, Context* ctx)
-    {
-        ctx->start_scope_build();
-        self->traverse(reinterpret_cast<ASTValue::TraverseCB>(resolution_pass_cb), ctx, nullptr);
-        ctx->end_scope_build();
     }
 
     /************************************************************************

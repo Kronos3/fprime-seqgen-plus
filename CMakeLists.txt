@@ -6,7 +6,7 @@ set(CXX_STANDARD 11)
 
 add_subdirectory(neoast)
 
-BuildParser(cc_lib grammar.y CXX)
+BuildParser(cc_lib grammar/grammar.y CXX)
 add_executable(cc
         cc.h
         grammar/grammar.cc
@@ -17,7 +17,7 @@ add_executable(cc
         common/common.h
         compilation/main.cc
         ${cc_lib_OUTPUT}
-        )
+        compilation/compile.cc compilation/compile.h common/common.cc)
 
 set_target_properties(cc PROPERTIES LINKER_LANGUAGE CXX)
 

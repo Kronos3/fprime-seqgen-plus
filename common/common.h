@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <stdexcept>
+#include <vector>
 
 namespace cc
 {
@@ -41,6 +42,8 @@ namespace cc
 
         return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
     }
+
+    std::vector<std::string> split_string(const std::string &str, char delimiter);
 }
 
 #endif //COMMON_H

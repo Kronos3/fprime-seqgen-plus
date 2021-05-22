@@ -17,7 +17,6 @@ namespace cc
     class Variable;
     class IRBuilder;
 
-
     struct ASTValue : public Value
     {
         struct TokenPosition
@@ -62,12 +61,8 @@ namespace cc
 
     struct ASTException : Exception
     {
-        ASTException(ASTValue* self, const std::string& what) :
-        Exception(variadic_string("%s at %d:%d", what.c_str(),
-                                  self->line, self->start_col))
-        {
-
-        }
+        ASTValue* self;
+        ASTException(ASTValue* self, const std::string& what) : Exception(what), self(self) {}
     };
 
     typedef enum
@@ -442,9 +437,6 @@ namespace cc
 
         void traverse(TraverseCB cb, Context* ctx, void* data) override;
     };
-
-    // TODO move away
-    void perform_resolution(ASTValue* self, Context* ctx);
 }
 
 #endif //CC_H
