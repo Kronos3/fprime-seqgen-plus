@@ -1,5 +1,6 @@
 #include <map>
 #include "print_debug.h"
+#include <compilation/type.h>
 
 using namespace cc;
 
@@ -13,20 +14,29 @@ namespace cc
             "F64"
     };
 
-    void print_indent(std::stringstream& ss, int indent);
+    void print_indent(std::stringstream &ss, int indent);
+
     void print_for(std::stringstream &ss, const ForLoop* t, int indent);
+
     void print_while(std::stringstream &ss, const WhileLoop* t, int indent);
 
     void print_call_expr(std::stringstream &ss, const CallExpr* self);
+
     void print_bin_expr(std::stringstream &ss, const BinaryExpr* self);
+
     void print_unary_expr(std::stringstream &ss, const UnaryExpr* self);
+
     void print_stmt_decl_init(std::stringstream &ss, const DeclInit* self, int indent);
+
     void print_stmt_decl(std::stringstream &ss, const Decl* self, int indent);
+
     void print_stmt_eval(std::stringstream &ss, const Eval* self, int indent);
+
     void print_stmt_multi(std::stringstream &ss, const MultiStatement* self, int indent);
+
     void print_stmt_if(std::stringstream &ss, const If* self, int indent);
 
-    std::stringstream& p(std::stringstream& ss,
+    std::stringstream &p(std::stringstream &ss,
                          const Statement* self,
                          int indent)
     {
@@ -68,6 +78,11 @@ namespace cc
             print_indent(ss, indent);
             ss << "Break";
         }
+        else if (dynamic_cast<const Return*>(self))
+        {
+            print_indent(ss, indent);
+            ss << "Return";
+        }
         else
         {
             throw Exception("Invalid Statement");
@@ -75,7 +90,8 @@ namespace cc
 
         return ss;
     }
-    std::stringstream& p(std::stringstream &ss, const Expression* self)
+
+    std::stringstream &p(std::stringstream &ss, const Expression* self)
     {
         if (dynamic_cast<const ImmIntExpr*>(self))
         {
@@ -118,12 +134,13 @@ namespace cc
 
         return ss;
     }
-    std::stringstream& p(std::stringstream& ss, const Function* self)
+
+    std::stringstream &p(std::stringstream &ss, const ASTFunction* self)
     {
-        ss << var_type_names[self->return_type] << " " << self->name << "(";
-        for(Arguments* iter = self->args; iter; iter = iter->next)
+        ss << self->return_type->as_string() << " " << self->name << "(";
+        for (Arguments* iter = self->args; iter; iter = iter->next)
         {
-            ss << var_type_names[iter->decl->type] << " " << iter->decl->name;
+            ss << self->return_type->as_string() << " " << iter->decl->name;
             if (iter->next)
             {
                 ss << ", ";
@@ -133,16 +150,31 @@ namespace cc
         p(ss, self->body, 1);
         return ss;
     }
-    std::stringstream& p(std::stringstream& ss, const GlobalDeclaration* self)
+
+    std::stringstream &p(std::stringstream &ss, const ASTGlobalVariable* self)
     {
-        for (const GlobalDeclaration* iter = self; iter; iter = iter->next)
+        ss << self->decl->type->as_string() << " " << self->decl->name << "(";
+
+        return ss;
+    }
+
+    std::stringstream &p(std::stringstream &ss, const ASTGlobal* self)
+    {
+        for (const ASTGlobal* iter = self; iter; iter = iter->next)
         {
-            p(ss, iter->self) << "\n";
+            if (dynamic_cast<const ASTFunction*>(iter))
+            {
+                p(ss, dynamic_cast<const ASTFunction*>(iter)) << "\n";
+            }
+            else if (dynamic_cast<const ASTGlobalVariable*>(iter))
+            {
+                p(ss, dynamic_cast<const ASTGlobalVariable*>(iter)) << "\n";
+            }
         }
         return ss;
     }
 
-    void print_indent(std::stringstream& ss, int indent)
+    void print_indent(std::stringstream &ss, int indent)
     {
         for (int i = 0; i < indent; i++)
         {
@@ -153,7 +185,7 @@ namespace cc
     void print_for(std::stringstream &ss, const ForLoop* t, int indent)
     {
         print_indent(ss, indent);
-        ss  << "For(";
+        ss << "For(";
         p(ss, t->initial, 0) << "; ";
         p(ss, t->conditional) << "; ";
         p(ss, t->increment) << ")\n";
@@ -163,7 +195,7 @@ namespace cc
     void print_while(std::stringstream &ss, const WhileLoop* t, int indent)
     {
         print_indent(ss, indent);
-        ss  << "While(";
+        ss << "While(";
         p(ss, t->conditional) << ")\n";
         p(ss, t->body, indent + 1);
     }
@@ -172,7 +204,7 @@ namespace cc
     {
         print_indent(ss, indent);
         ss << "DeclInit(["
-           << std::string(var_type_names[self->decl->type]) << "] "
+           << self->decl->type->as_string() << "] "
            << self->decl->name << " = ";
         p(ss, self->initializer) << ")";
     }
@@ -181,7 +213,7 @@ namespace cc
     {
         print_indent(ss, indent);
         ss << "Decl(["
-           << var_type_names[self->decl->type] << "] "
+           << self->decl->type->as_string() << "] "
            << self->decl->name << ")";
     }
 
@@ -244,21 +276,21 @@ namespace cc
 
     void print_bin_expr(std::stringstream &ss, const BinaryExpr* self)
     {
-        std::map<BinaryExpr::binary_operator_t, std::string> op_map {
+        std::map<BinaryExpr::binary_operator_t, std::string> op_map{
                 {BinaryExpr::A_ADD, "+"},
                 {BinaryExpr::A_SUB, "-"},
                 {BinaryExpr::A_DIV, "/"},
                 {BinaryExpr::A_MUL, "*"},
                 {BinaryExpr::B_AND, "&"},
-                {BinaryExpr::B_OR, "|"},
+                {BinaryExpr::B_OR,  "|"},
                 {BinaryExpr::B_XOR, "^"},
-                {BinaryExpr::L_LT, "<"},
-                {BinaryExpr::L_GT, ">"},
-                {BinaryExpr::L_LE, "<="},
-                {BinaryExpr::L_GE, ">="},
-                {BinaryExpr::L_EQ, "=="},
+                {BinaryExpr::L_LT,  "<"},
+                {BinaryExpr::L_GT,  ">"},
+                {BinaryExpr::L_LE,  "<="},
+                {BinaryExpr::L_GE,  ">="},
+                {BinaryExpr::L_EQ,  "=="},
                 {BinaryExpr::L_AND, "&&"},
-                {BinaryExpr::L_OR, "||"},
+                {BinaryExpr::L_OR,  "||"},
         };
 
         ss << "BinExpr(";
@@ -268,12 +300,12 @@ namespace cc
 
     void print_unary_expr(std::stringstream &ss, const UnaryExpr* self)
     {
-        std::map<UnaryExpr::unary_operator_t, std::string> op_map {
-                {UnaryExpr::B_NOT, "~"},
-                {UnaryExpr::L_NOT, "!"},
-                {UnaryExpr::INC_PRE, "INC_PRE "},
+        std::map<UnaryExpr::unary_operator_t, std::string> op_map{
+                {UnaryExpr::B_NOT,    "~"},
+                {UnaryExpr::L_NOT,    "!"},
+                {UnaryExpr::INC_PRE,  "INC_PRE "},
                 {UnaryExpr::INC_POST, "INC_POST "},
-                {UnaryExpr::DEC_PRE, "DEC_PRE "},
+                {UnaryExpr::DEC_PRE,  "DEC_PRE "},
                 {UnaryExpr::DEC_POST, "DEC_POST "},
         };
 

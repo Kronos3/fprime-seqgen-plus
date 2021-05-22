@@ -8,31 +8,25 @@ namespace cc
 {
     constexpr int ERROR_CONTEXT_LINE_N = 3;
 
-    class IRBuilder
-    {
-
-    };
-
     class Compiler
     {
-        GlobalDeclaration* ast;
+        ASTGlobal* ast;
         std::string filename;
         std::vector<std::string> lines;
 
         Context* ctx;
 
         void read(std::string& file_content);
-        void handle_ast_exception(const ASTException& e,
-                                  const std::string& phase) const;
 
-        void resolve();
+        bool parse();
+        bool resolve();
+        bool put_errors() const;
 
     public:
         explicit Compiler(std::string filename);
-        void parse();
-        void compile();
 
-        void dump_ast();
+        bool execute();
+        void dump_ast() const;
 
         ~Compiler();
     };

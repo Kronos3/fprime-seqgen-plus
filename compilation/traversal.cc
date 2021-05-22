@@ -1,5 +1,6 @@
 #include <cc.h>
 #include "context.h"
+#include "module.h"
 
 namespace cc
 {
@@ -7,39 +8,30 @@ namespace cc
     {
         conditional->traverse(cb, ctx, data);
         body->traverse(cb, ctx, data);
-        cb(this, ctx, data);
+        ASTValue::traverse(cb, ctx, data);
     }
 
     void ForLoop::traverse(TraverseCB cb, Context* ctx, void* data)
     {
+        ctx->enter_scope(Scope::LOOP);
+
         initial->traverse(cb, ctx, data);
         conditional->traverse(cb, ctx, data);
         increment->traverse(cb, ctx, data);
         body->traverse(cb, ctx, data);
         cb(this, ctx, data);
+
+        ctx->exit_scope();
     }
 
     void MultiStatement::traverse(TraverseCB cb, Context* ctx, void* data)
     {
-        ctx->enter_scope("block");
+        ctx->enter_scope(Scope::BRACKET);
         for (MultiStatement* iter = this; iter; iter = iter->next)
         {
             iter->self->traverse(cb, ctx, data);
             cb(iter, ctx, data);
         }
-        ctx->exit_scope();
-    }
-
-    void Function::traverse(TraverseCB cb, Context* ctx, void* data)
-    {
-        ctx->enter_scope(name);
-        if (args)
-        {
-            args->traverse(cb, ctx, data);
-        }
-
-        body->traverse(cb, ctx, data);
-        cb(this, ctx, data);
         ctx->exit_scope();
     }
 
@@ -51,18 +43,10 @@ namespace cc
         }
     }
 
-    void GlobalDeclaration::traverse(TraverseCB cb, Context* ctx, void* data)
-    {
-        for (GlobalDeclaration* iter = this; iter; iter = iter->next)
-        {
-            iter->self->traverse(cb, ctx, data);
-        }
-    }
-
     void Decl::traverse(TraverseCB cb, Context* ctx, void* data)
     {
         decl->traverse(cb, ctx, data);
-        cb(this, ctx, data);
+        ASTValue::traverse(cb, ctx, data);
     }
 
     void DeclInit::traverse(TraverseCB cb, Context* ctx, void* data)
@@ -74,7 +58,7 @@ namespace cc
     void Eval::traverse(TraverseCB cb, Context* ctx, void* data)
     {
         expr->traverse(cb, ctx, data);
-        cb(this, ctx, data);
+        ASTValue::traverse(cb, ctx, data);
     }
 
     void If::traverse(TraverseCB cb, Context* ctx, void* data)
@@ -82,31 +66,27 @@ namespace cc
         clause->traverse(cb, ctx, data);
         assert(then_stmt);
 
-        ctx->enter_scope("if");
         then_stmt->traverse(cb, ctx, data);
-        ctx->exit_scope();
 
         if (else_stmt)
         {
-            ctx->enter_scope("else");
             else_stmt->traverse(cb, ctx, data);
-            ctx->exit_scope();
         }
 
-        cb(this, ctx, data);
+        ASTValue::traverse(cb, ctx, data);
     }
 
     void BinaryExpr::traverse(TraverseCB cb, Context* ctx, void* data)
     {
         a->traverse(cb, ctx, data);
         b->traverse(cb, ctx, data);
-        cb(this, ctx, data);
+        ASTValue::traverse(cb, ctx, data);
     }
 
     void UnaryExpr::traverse(TraverseCB cb, Context* ctx, void* data)
     {
         operand->traverse(cb, ctx, data);
-        cb(this, ctx, data);
+        ASTValue::traverse(cb, ctx, data);
     }
 
     void CallArguments::traverse(TraverseCB cb, Context* ctx, void* data)
@@ -124,14 +104,44 @@ namespace cc
             arguments->traverse(cb, ctx, data);
         }
 
-        cb(this, ctx, data);
+        ASTValue::traverse(cb, ctx, data);
     }
 
     void AssignExpr::traverse(TraverseCB cb, Context* ctx, void* data)
     {
         sink->traverse(cb, ctx, data);
         value->traverse(cb, ctx, data);
-        cb(this, ctx, data);
+        ASTValue::traverse(cb, ctx, data);
+    }
+
+    void Return::traverse(ASTValue::TraverseCB cb, Context* ctx, void* data)
+    {
+        return_value->traverse(cb, ctx, data);
+        ASTValue::traverse(cb, ctx, data);
+    }
+
+    void ASTFunction::traverse(TraverseCB cb, Context* ctx, void* data)
+    {
+        ctx->enter_scope(Scope::FUNCTION, name);
+        if (args)
+        {
+            args->traverse(cb, ctx, data);
+        }
+
+        body->traverse(cb, ctx, data);
+        cc::ASTGlobal::traverse(cb, ctx, data);
+        ctx->exit_scope();
+    }
+
+    void ASTGlobalVariable::traverse(ASTValue::TraverseCB cb, Context* ctx, void* data)
+    {
+        decl->traverse(cb, ctx, data);
+        if (initializer)
+        {
+            initializer->traverse(cb, ctx, data);
+        }
+
+        ASTValue::traverse(cb, ctx, data);
     }
 
     /************************************************************************
@@ -145,12 +155,22 @@ namespace cc
         value = context->get_variable(variable);
         if (!value)
         {
-            throw ASTException(this, "Undeclared variable " + variable);
+            context->emit_error(this, "Undeclared variable " + variable);
         }
     }
 
     void TypeDecl::resolution_pass(Context* context)
     {
         variable = context->declare_variable(this);
+    }
+
+    void ASTGlobalVariable::resolution_pass(Context* context)
+    {
+        symbol = context->get_module()->declare_variable(this);
+    }
+
+    void ASTFunction::resolution_pass(Context* context)
+    {
+        symbol = context->get_module()->declare_function(this);
     }
 }

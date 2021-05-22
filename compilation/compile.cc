@@ -8,8 +8,10 @@
 
 namespace cc
 {
-    static void read_file(std::ifstream& t,
-                          std::string& str)
+    Context* cc_ctx = nullptr;
+
+    static void read_file(std::ifstream &t,
+                          std::string &str)
     {
         t.seekg(0, std::ios::end);
         str.reserve(t.tellg());
@@ -20,11 +22,23 @@ namespace cc
     }
 
     Compiler::Compiler(std::string filename) :
-        ast(nullptr), filename(std::move(filename)), ctx(new Context())
+            ast(nullptr), filename(std::move(filename)), ctx(new Context())
     {
     }
 
-    void Compiler::parse()
+    void Compiler::read(std::string &file_content)
+    {
+        std::ifstream input_file(filename);
+        if (!input_file.is_open())
+        {
+            throw Exception("Failed to open file: " + filename);
+        }
+
+        read_file(input_file, file_content);
+        lines = split_string(file_content, '\n');
+    }
+
+    bool Compiler::parse()
     {
         std::string file;
         read(file);
@@ -32,22 +46,16 @@ namespace cc
         cc_init();
         CCBuffers* buf = cc_allocate_buffers();
 
-        try
-        {
-            ast = cc_parse(buf, file.c_str());
-        }
-        catch (cc::ASTException& e)
-        {
-            handle_ast_exception(e, "parsing");
-        }
-        catch (cc::Exception& e)
-        {
-            std::cerr << "Exception occurred during parsing: "
-                      << e.what();
-        }
+        cc_ctx = ctx;
+
+        ast = cc_parse(buf, file.c_str());
 
         cc_free_buffers(buf);
         cc_free();
+
+        cc_ctx = ctx;
+
+        return not put_errors() && ast;
     }
 
     static int count_digit(int n)
@@ -61,42 +69,46 @@ namespace cc
         return count;
     }
 
-    void Compiler::read(std::string& file_content)
+    void put_warnings_or_errors(const std::vector<ASTException> &l,
+                                const std::vector<std::string> &lines,
+                                const std::string &filename,
+                                const std::string &message)
     {
-        std::ifstream input_file(filename);
-        if (!input_file.is_open())
+        for (const auto& e : l)
         {
-            throw Exception("Failed to open file: " + filename);
-        }
-
-        read_file(input_file, file_content);
-        lines = split_string(file_content, '\n');
-    }
-
-    void Compiler::handle_ast_exception(const ASTException &e, const std::string& phase) const
-    {
-        std::cerr << "Exception occurred during " << phase << ": "
-                  << e.what()
-                  << "\n";
-
-        int digit_with = count_digit(static_cast<int>(e.self->line));
-        for (int i = static_cast<int>(e.self->line) - ERROR_CONTEXT_LINE_N; i < e.self->line; i++)
-        {
-            if (i < 0)
+            int digit_with = count_digit(static_cast<int>(e.self.line));
+            for (int i = static_cast<int>(e.self.line) - ERROR_CONTEXT_LINE_N; i < e.self.line; i++)
             {
-                continue;
+                if (i < 0)
+                {
+                    continue;
+                }
+
+                std::cerr
+                        << std::setfill('0') << std::setw(digit_with)
+                        << i + 1
+                        << "  "
+                        << lines[i]
+                        << "\n";
             }
 
-            std::cerr
-                    << std::setfill('0') << std::setw(digit_with)
-                    << i + 1
-                    << "  "
-                    << lines[i]
-                    << "\n";
+            std::cerr << std::string(e.self.start_col + digit_with + 1, '-')
+                      << "^\n"
+                      << filename << ":" << e.self.line << " " << message << ": " << e.what() << "\n\n";
         }
+    }
 
-        std::cerr << std::string(e.self->start_col + digit_with + 1, '-')
-                  << "^\n\n";
+    bool Compiler::put_errors() const
+    {
+        const std::vector<ASTException>& errors = ctx->get_errors();
+        const std::vector<ASTException>& warnings = ctx->get_warnings();
+
+        put_warnings_or_errors(errors, lines, filename, "Error");
+        put_warnings_or_errors(warnings, lines, filename, "Warning");
+
+        ctx->clear_warnings();
+
+        return !errors.empty();
     }
 
     static void resolution_pass_cb(ASTValue* self, Context* ctx)
@@ -104,31 +116,16 @@ namespace cc
         self->resolution_pass(ctx);
     }
 
-    void Compiler::compile()
-    {
-        try
-        {
-            resolve();
-        }
-        catch (cc::ASTException& e)
-        {
-            handle_ast_exception(e, "resolution");
-        }
-        catch (cc::Exception& e)
-        {
-            std::cerr << "Exception occurred during resolution: "
-                      << e.what();
-        }
-    }
-
-    void Compiler::resolve()
+    bool Compiler::resolve()
     {
         ctx->start_scope_build();
         ast->traverse(reinterpret_cast<ASTValue::TraverseCB>(resolution_pass_cb), ctx, nullptr);
         ctx->end_scope_build();
+
+        return not put_errors();
     }
 
-    void Compiler::dump_ast()
+    void Compiler::dump_ast() const
     {
         std::stringstream ss;
         p(ss, ast);
@@ -139,6 +136,21 @@ namespace cc
     {
         delete ctx;
         delete ast;
+    }
+
+    bool Compiler::execute()
+    {
+        if (not parse())
+        {
+            return false;
+        }
+
+        if (not resolve())
+        {
+            return false;
+        }
+
+        return true;
     }
 
 

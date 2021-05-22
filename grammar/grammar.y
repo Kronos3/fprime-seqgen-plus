@@ -1,38 +1,38 @@
 %top {
     #include "cc.h"
-    #include <string.h>
-    #include <stdlib.h>
+    #include "compilation/context.h"
     #include "grammar/grammar.h"
+
+    namespace cc { extern Context* cc_ctx; }
 }
 
 %option parser_type="LALR(1)"
 %option prefix="cc"
 %option track_position="TRUE"
 %option track_position_type="ASTValue::TokenPosition"
-%option debug_table="TRUE"
-// %option debug_ids="$si?:fwu=~>g<et()+-*/{}!,;=LFEPAVSMHJ"
 %option parsing_stack_size="4096"
 
 %union {
     char* identifier;
     int integer;
     double floating;
-    GlobalDeclaration* gbl_decls;
-    Function* f_decl;
+    ASTGlobal* global;
+    ASTFunction* function;
     Expression* expr;
     Arguments* f_args;
     CallArguments* args;
     TypeDecl* v_decl;
-    type_t type;
+    const Type* type;
     Statement* stmt;
     MultiStatement* multi_stmt;
     If* if_clause;
     Loop* loop;
 }
 
-%destructor <gbl_decls> { delete $$; }
+%destructor <identifier> { free($$); }
+%destructor <global> { delete $$; }
 %destructor <f_args> { delete $$; }
-%destructor <f_decl> { delete $$; }
+%destructor <function> { delete $$; }
 %destructor <stmt> { delete $$; }
 %destructor <loop> { delete $$; }
 %destructor <if_clause> { delete $$; }
@@ -51,6 +51,7 @@
 %token WHILE
 %token CONTINUE
 %token BREAK
+%token RETURN
 %token EQ
 %token NE
 %token GT
@@ -99,7 +100,7 @@
 %right INC
 %right DEC
 
-%type<f_decl> f_decl
+%type<function> function
 %type<f_args> f_args
 %type<args> args
 %type<expr> expr
@@ -114,8 +115,9 @@
 %type<stmt> stmt
 %type<loop> loop_header
 %type<if_clause> if_clause
-%type<gbl_decls> prog
-%start<gbl_decls> prog
+%type<global> global
+%type<global> prog
+%start<global> prog
 
 ==
 
@@ -150,7 +152,7 @@
 "[0-9]+\.[0-9]*"        { yyval->floating = strtod(yytext, NULL); return FLOATING; }
 "[0-9]"                 { yyval->integer = strtol(yytext, NULL, 0); return INTEGER; }
 "[A-Za-z_][A-Za-z_0-9]*" {
-                            int keyword_i = handle_keyword(yytext, yyval);
+                            int keyword_i = handle_keyword(cc_ctx, yytext, yyval);
                             if (keyword_i >= 0) return keyword_i;
                             yyval->identifier = strdup(yytext);
                             return VARIABLE;
@@ -159,9 +161,14 @@
 ==
 
 %%
+prog: prog global      { $$ = $1; $$->next = $2; }
+    | global           { $$ = $1; }
+    ;
 
-prog: prog f_decl        { $$ = $1; $$->next = new GlobalDeclaration($2); }
-    | f_decl             { $$ = new GlobalDeclaration($1); }
+global:
+    function                { $$ = $1; }
+    | v_decl                { $$ = new ASTGlobalVariable($1); }
+    | v_decl '=' expr_ ';'  { $$ = new ASTGlobalVariable($1, $3); }
     ;
 
 v_decl: TYPE VARIABLE           { $$ = new TypeDecl($p2, $1, $2); }
@@ -178,7 +185,7 @@ loop_header:
   ;
 
 multi_stmt:
-    stmt multi_stmt { $$ = new MultiStatement($1); $$->next = $2; }
+    stmt multi_stmt { if ($1) { $$ = new MultiStatement($1); $$->next = $2; } else { $$ = $2; } }
   | stmt            { $$ = new MultiStatement($1); }
   ;
 
@@ -211,7 +218,9 @@ closed_stmt:
       simple_stmt ';'           { $$ = $1; }
     | CONTINUE ';'              { $$ = new Continue($p1); }
     | BREAK    ';'              { $$ = new Break($p1); }
-    | ';'                       { fprintf(stderr, "Empty statement\n"); $$ = nullptr; }
+    | RETURN   ';'              { $$ = new Return($p1); }
+    | RETURN  expr  ';'         { $$ = new Return($p1, $2); }
+    | ';'                       { cc_ctx->emit_warning($p1, "Empty statement"); $$ = nullptr; }
     | bracket_stmt              { $$ = $1; }
     | loop_header closed_stmt   { $$ = $1; $1->body = $2; }
     | if_clause closed_stmt ELSE closed_stmt { $$ = $1; $1->then_stmt = $2; $1->else_stmt = $4; }
@@ -226,13 +235,13 @@ f_args:
     ;
 
 // Function declarations
-f_decl:
+function:
     TYPE VARIABLE '(' f_args ')' '{'
             multi_stmt
-        '}' { $$ = new Function($p1, $1, $2, $4, $7); }
+        '}' { $$ = new ASTFunction($p1, $1, $2, $4, $7); }
   | TYPE VARIABLE '(' ')' '{'
             multi_stmt
-        '}' { $$ = new Function($p1, $1, $2, nullptr, $6); }
+        '}' { $$ = new ASTFunction($p1, $1, $2, nullptr, $6); }
     ;
 
 // Argument list passed to a function/command

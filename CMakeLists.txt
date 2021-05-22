@@ -17,7 +17,7 @@ add_executable(cc
         common/common.h
         compilation/main.cc
         ${cc_lib_OUTPUT}
-        compilation/compile.cc compilation/compile.h common/common.cc)
+        compilation/compile.cc compilation/compile.h common/common.cc compilation/instruction.cc compilation/instruction.h compilation/module.h compilation/module.cc compilation/type.cc compilation/type.h)
 
 set_target_properties(cc PROPERTIES LINKER_LANGUAGE CXX)
 

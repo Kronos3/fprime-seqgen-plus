@@ -24,6 +24,14 @@ namespace cc
         virtual ~Value() = default;
     };
 
+    struct IR : Value
+    {
+    };
+
+    struct Reference : IR
+    {
+    };
+
     template<typename T_,
             typename... Args>
     std::string variadic_string(const char* format,
