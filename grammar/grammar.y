@@ -161,7 +161,7 @@
 ==
 
 %%
-prog: prog global      { $$ = $1; $$->next = $2; }
+prog: global prog      { $$ = $1; $$->next = $2; }
     | global           { $$ = $1; }
     ;
 
@@ -236,12 +236,14 @@ f_args:
 
 // Function declarations
 function:
-    TYPE VARIABLE '(' f_args ')' '{'
+      TYPE VARIABLE '(' f_args ')' '{'
             multi_stmt
-        '}' { $$ = new ASTFunction($p1, $1, $2, $4, $7); }
-  | TYPE VARIABLE '(' ')' '{'
+        '}'                                 { $$ = new ASTFunctionDefine($p1, $1, $2, $4, $7); }
+    | TYPE VARIABLE '(' ')' '{'
             multi_stmt
-        '}' { $$ = new ASTFunction($p1, $1, $2, nullptr, $6); }
+        '}'                                 { $$ = new ASTFunctionDefine($p1, $1, $2, nullptr, $6); }
+    | TYPE VARIABLE '(' f_args ')' ';'      { $$ = new ASTFunction($p1, $1, $2, $4); }
+    | TYPE VARIABLE '(' ')' ';'             { $$ = new ASTFunction($p1, $1, $2, nullptr); }
     ;
 
 // Argument list passed to a function/command

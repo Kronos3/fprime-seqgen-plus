@@ -1,5 +1,7 @@
 #include "compile.h"
 #include "cc.h"
+#include "module.h"
+#include "instruction.h"
 #include <fstream>
 #include <grammar/grammar.h>
 #include <iostream>
@@ -92,7 +94,7 @@ namespace cc
                         << "\n";
             }
 
-            std::cerr << std::string(e.self.start_col + digit_with + 1, '-')
+            std::cerr << std::string(e.self.col + digit_with + 1, '-')
                       << "^\n"
                       << filename << ":" << e.self.line << " " << message << ": " << e.what() << "\n\n";
         }
@@ -119,7 +121,10 @@ namespace cc
     bool Compiler::resolve()
     {
         ctx->start_scope_build();
-        ast->traverse(reinterpret_cast<ASTValue::TraverseCB>(resolution_pass_cb), ctx, nullptr);
+        for (ASTGlobal* iter = ast; iter; iter = iter->next)
+        {
+            iter->traverse(reinterpret_cast<ASTValue::TraverseCB>(resolution_pass_cb), ctx, nullptr);
+        }
         ctx->end_scope_build();
 
         return not put_errors();
@@ -129,6 +134,13 @@ namespace cc
     {
         std::stringstream ss;
         p(ss, ast);
+        std::cout << ss.str();
+    }
+
+    void Compiler::dump_ir() const
+    {
+        std::stringstream ss;
+        p(ss, ctx->get_module()->scope());
         std::cout << ss.str();
     }
 
@@ -145,13 +157,34 @@ namespace cc
             return false;
         }
 
+        dump_ast();
+
         if (not resolve())
         {
             return false;
         }
 
+        if (not ir())
+        {
+            return false;
+        }
+
+        dump_ir();
+
         return true;
     }
 
+    bool Compiler::ir()
+    {
+        /* Build everything */
+        IRBuilder IRB;
 
+        for (ASTGlobal* iter = ast; iter; iter = iter->next)
+        {
+            IRB.set_insertion_point(nullptr);
+            iter->add(ctx, IRB);
+        }
+
+        return not put_errors();
+    }
 }

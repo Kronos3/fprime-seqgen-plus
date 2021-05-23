@@ -136,12 +136,12 @@ namespace cc
     static int loop_scope_counter = 0;
     static int scope_count = 0;
     Scope::Scope(Context* ctx, Scope* parent, Scope* older_sibling) :
-    Scope(ctx, variadic_string(".scope-%d", scope_count++), parent, older_sibling)
+    Scope(ctx, variadic_string("scope-%d", scope_count++), parent, older_sibling)
     {
     }
 
     LoopScope::LoopScope(Context* ctx, Scope* parent, Scope* older_sibling) :
-            Scope(ctx, variadic_string(".loop-%d", loop_scope_counter++), parent, older_sibling),
+            Scope(ctx, variadic_string("loop-%d", loop_scope_counter++), parent, older_sibling),
             exit(nullptr)
     {
     }

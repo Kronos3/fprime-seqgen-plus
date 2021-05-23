@@ -4,6 +4,7 @@
 #include <cc.h>
 #include <list>
 #include <map>
+#include <utility>
 
 #include "context.h"
 
@@ -11,17 +12,31 @@ namespace cc
 {
     struct Instruction : public IR
     {
+        virtual std::string get_name() const = 0;
     };
 
     class Block : public Value
     {
         Scope* scope;
-        Block* next;
+        Block* next_;
         std::list<Instruction*> instructions;
         std::list<IR*> dangling;
+        std::string name;
 
     public:
-        explicit Block(Scope* scope) : scope(scope), next(nullptr) {}
+        explicit Block(Scope* scope)
+        : scope(scope), next_(nullptr)
+        {
+            uint32_t b_c = scope->block_count();
+            if (b_c)
+            {
+                name = variadic_string("%s.%d", scope->get_lineage().c_str(), b_c);
+            }
+            else
+            {
+                name = scope->get_lineage();
+            }
+        }
 
         void push(Instruction* instruction)
         {
@@ -35,9 +50,15 @@ namespace cc
 
         void chain(Block* block)
         {
-            assert(!next && "Block already has a next!");
-            next = block;
+            assert(!next_ && "Block already has a next!");
+            next_ = block;
         }
+
+        Block* next() const { return next_; }
+        std::string get_name() const { return name; }
+        std::list<Instruction*>::const_iterator begin() const { return instructions.begin(); }
+        std::list<Instruction*>::const_iterator end() const { return instructions.end(); }
+
 
         ~Block() override;
     };
@@ -47,13 +68,14 @@ namespace cc
         Block* block;
 
     public:
-        explicit IRBuilder(Block* block) : block(block) {}
+        explicit IRBuilder() : block(nullptr) {}
 
         template<typename T,
                 typename... Args,
                 typename = typename std::enable_if<std::is_base_of<Instruction, T>::value >::type >
-        T* add(Args... args)
+        const T* add(Args... args)
         {
+            assert(block && "Attempting to add instruction to nothing");
             T* instr = new T(args...);
             block->push(instr);
             return instr;
@@ -62,8 +84,9 @@ namespace cc
         template<typename T,
                 typename... Args,
                 typename = typename std::enable_if<std::is_base_of<IR, T>::value >::type >
-        T* add_dangling(Args... args)
+        const T* add_dangling(Args... args)
         {
+            assert(block && "Attempting to add instruction to nothing");
             T* ir = new T(args...);
             block->push_dangling(ir);
             return ir;
@@ -78,19 +101,31 @@ namespace cc
      *                          Instruction definition                          *
      *
      ****************************************************************************/
-#define BINARY_INSTR(name) \
-    struct name##Instr : public Instruction \
-    {   \
-        IR* a; \
-        IR* b; \
-        name##Instr(IR* a, IR* b) : a(b), b(b) {} \
+
+    struct BinaryInstr : public Instruction
+    {
+        const IR* a;
+        const IR* b;
+        BinaryInstr(const IR* a, const IR* b) : a(b), b(b) {}
+    };
+
+    struct UnaryInstr : public Instruction
+    {
+        const IR* v;
+        explicit UnaryInstr(const IR* v) : v(v) {}
+    };
+
+#define BINARY_INSTR(name) struct name##Instr : public BinaryInstr \
+    {                                                              \
+        name##Instr(const IR* a, const IR* b) : BinaryInstr(a, b)  {}          \
+        std::string get_name() const override { return #name "Instr"; } \
     }
 
 #define UNARY_INSTR(name)   \
-    struct name##Instr : public Instruction \
-    {   \
-        IR* v; \
-        explicit name##Instr(IR* v) : v(v) {} \
+    struct name##Instr : public UnaryInstr                  \
+    {                                                       \
+        explicit name##Instr(const IR* v) : UnaryInstr(v)  {}     \
+        std::string get_name() const override { return #name "Instr"; } \
     }
 
     /** Arithmetic instructions **/
@@ -130,6 +165,7 @@ namespace cc
         bool inlined;
 
         explicit JumpInstr(Block* target, bool inlined = false) : target(target), inlined(inlined) {}
+        std::string get_name() const override { return "JumpInstr"; }
     };
 
     struct BranchInstr : public JumpInstr
@@ -138,10 +174,11 @@ namespace cc
          * Conditional jump
          */
 
-        IR* condition;
+        const IR* condition;
 
-        explicit BranchInstr(Block* target, IR* condition, bool inlined = true) :
+        explicit BranchInstr(Block* target, const IR* condition, bool inlined = true) :
             JumpInstr(target, inlined), condition(condition) {}
+        std::string get_name() const override { return "BranchInstr"; }
     };
 
     /** Misc **/
@@ -150,68 +187,29 @@ namespace cc
     {
         const Type* type;
         explicit AllocaInstr(const Type* type) : type(type) {}
+        std::string get_name() const override { return "AllocaInstr"; }
     };
 
     struct MovInstr : public Instruction
     {
-        Reference* dest;
-        IR* src;
+        const Reference* dest;
+        const IR* src;
 
-        explicit MovInstr(Reference* dest, IR* src) : dest(dest), src(src) {}
+        explicit MovInstr(const Reference* dest, const IR* src) : dest(dest), src(src) {}
+        std::string get_name() const override { return "MovInstr"; }
     };
 
     struct ReturnInstr : public Instruction
     {
-    };
-
-    template<unsigned int N>
-    struct Immediate : public IR
-    {
-        static_assert(N == 8 ||
-                      N == 16 ||
-                      N == 32 ||
-                      N == 64, "Invalid immediate bit-size");
-
-        int bit_n = N;
-        uint64_t value;
-
-    protected:
-        template<typename T>
-        explicit Immediate(T value) : bit_n(N), value(0)
-        {
-            union { T temp; uint64_t real; } u;
-            u.temp = value;
-            value = u.real;
-        }
-
-    };
-
-    template<unsigned int N>
-    struct ImmInteger : public Immediate<N>
-    {
-        template<typename T,
-                typename = typename std::enable_if< std::is_integral<T>::value >>
-        explicit ImmInteger(T value) : Immediate<N>(value)
-        {
-        }
-    };
-
-    template<unsigned int N>
-    struct ImmFloat : public Immediate<N>
-    {
-        static_assert(N == 32 ||
-                      N == 64, "Invalid floating immediate bit-size");
-
-        template<typename T,
-                typename = typename std::enable_if< std::is_floating_point<T>::value >>
-        explicit ImmFloat(T value) : Immediate<N>(value)
-        {
-        }
+        std::string get_name() const override { return "ReturnInstr"; }
     };
 
     struct CallInstr : public Instruction
     {
-
+        const Function* f;
+        std::vector<const IR*> arguments;
+        CallInstr(const Function* F, std::vector<const IR*> arguments) : f(F), arguments(std::move(arguments)) {}
+        std::string get_name() const override { return "CallInstr"; }
     };
 }
 

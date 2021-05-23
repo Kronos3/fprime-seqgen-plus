@@ -26,6 +26,7 @@ namespace cc
     const Type* Type::create(Context* ctx, const std::string &name)
     {
         if (name == "void") return ctx->type<VOID>();
+        else if (name == "char") return ctx->type<CHAR>();
         else if (name == "i8") return ctx->type<I8>();
         else if (name == "i16") return ctx->type<I16>();
         else if (name == "i32") return ctx->type<I32>();

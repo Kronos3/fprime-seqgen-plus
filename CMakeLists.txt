@@ -22,9 +22,9 @@ add_executable(cc
 set_target_properties(cc PROPERTIES LINKER_LANGUAGE CXX)
 
 add_library(cc_dbg STATIC
-        debug/print_debug.cc
+        debug/print_ast.cc
         debug/print_debug.h
-        )
+        debug/print_ir.cc)
 
 target_link_libraries(cc neoast cc_dbg)
 target_include_directories(cc_dbg PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

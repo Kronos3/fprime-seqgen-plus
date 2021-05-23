@@ -4,13 +4,6 @@
 
 namespace cc
 {
-    void Loop::traverse(TraverseCB cb, Context* ctx, void* data)
-    {
-        conditional->traverse(cb, ctx, data);
-        body->traverse(cb, ctx, data);
-        ASTValue::traverse(cb, ctx, data);
-    }
-
     void ForLoop::traverse(TraverseCB cb, Context* ctx, void* data)
     {
         ctx->enter_scope(Scope::LOOP);
@@ -19,7 +12,19 @@ namespace cc
         conditional->traverse(cb, ctx, data);
         increment->traverse(cb, ctx, data);
         body->traverse(cb, ctx, data);
-        cb(this, ctx, data);
+        ASTValue::traverse(cb, ctx, data);
+
+        ctx->exit_scope();
+    }
+
+
+    void WhileLoop::traverse(TraverseCB cb, Context* ctx, void* data)
+    {
+        ctx->enter_scope(Scope::LOOP);
+
+        conditional->traverse(cb, ctx, data);
+        body->traverse(cb, ctx, data);
+        ASTValue::traverse(cb, ctx, data);
 
         ctx->exit_scope();
     }
@@ -120,7 +125,7 @@ namespace cc
         ASTValue::traverse(cb, ctx, data);
     }
 
-    void ASTFunction::traverse(TraverseCB cb, Context* ctx, void* data)
+    void ASTFunctionDefine::traverse(TraverseCB cb, Context* ctx, void* data)
     {
         ctx->enter_scope(Scope::FUNCTION, name);
         if (args)
@@ -129,7 +134,7 @@ namespace cc
         }
 
         body->traverse(cb, ctx, data);
-        cc::ASTGlobal::traverse(cb, ctx, data);
+        cc::ASTFunction::traverse(cb, ctx, data);
         ctx->exit_scope();
     }
 

@@ -1,5 +1,10 @@
+
+#include <cc.h>
+#include <cstring>
+
 #include "instruction.h"
 #include "context.h"
+#include "module.h"
 
 namespace cc
 {
@@ -26,7 +31,7 @@ namespace cc
 
         // Add the conditional instructions
         IRB.set_insertion_point(loop_block);
-        IRB.add<BranchInstr>(post_block, new L_NotInstr(conditional->get(ctx, IRB)));
+        IRB.add<BranchInstr>(post_block, IRB.add<L_NotInstr>(conditional->get(ctx, IRB)));
 
         // Insert the looping instructions into the body block
         body->add(ctx, IRB);
@@ -149,7 +154,7 @@ namespace cc
         IRB.add<ReturnInstr>();
     }
 
-    IR* BinaryExpr::get(Context* ctx, IRBuilder &IRB) const
+    const IR* BinaryExpr::get(Context* ctx, IRBuilder &IRB) const
     {
         switch (op)
         {
@@ -173,7 +178,7 @@ namespace cc
         return nullptr;
     }
 
-    IR* UnaryExpr::get(Context* ctx, IRBuilder &IRB) const
+    const IR* UnaryExpr::get(Context* ctx, IRBuilder &IRB) const
     {
         switch (op)
         {
@@ -183,13 +188,13 @@ namespace cc
             case DEC_PRE: return IRB.add<DecInstr>(operand->get(ctx, IRB));
             case INC_POST:
             {
-                IR* out = operand->get(ctx, IRB);
+                const IR* out = operand->get(ctx, IRB);
                 IRB.add<IncInstr>(out);
                 return out;
             }
             case DEC_POST:
             {
-                IR* out = operand->get(ctx, IRB);
+                const IR* out = operand->get(ctx, IRB);
                 IRB.add<DecInstr>(out);
                 return out;
             }
@@ -199,46 +204,106 @@ namespace cc
         return nullptr;
     }
 
-    IR* ImmIntExpr::get(Context* ctx, IRBuilder &IRB) const
+    const IR* ASTConstant::get(Context* ctx, IRBuilder &IRB) const
     {
-        return IRB.add_dangling<ImmInteger<32>>(value);
+        return this;
     }
 
-    IR* ImmFloatExpr::get(Context* ctx, IRBuilder &IRB) const
+    std::string ImmIntExpr::get_name() const
     {
-        return IRB.add_dangling<ImmFloat<64>>(value);
+        static int i = 0;
+        return variadic_string("integer.%d", i++);
     }
 
-    IR* VariableExpr::get(Context* ctx, IRBuilder &IRB) const
+    std::string ImmFloatExpr::get_name() const
+    {
+        static int i = 0;
+        return variadic_string("float.%d", i++);
+    }
+
+    std::string LiteralExpr::get_name() const
+    {
+        static int i = 0;
+        return variadic_string("str.%d", i++);
+    }
+
+    const IR* VariableExpr::get(Context* ctx, IRBuilder &IRB) const
     {
         return value->get();
     }
 
-    IR* LiteralExpr::get(Context* ctx, IRBuilder &IRB) const
+    void LiteralExpr::write(void* buffer) const
     {
-        // TODO Create global string
-        return nullptr;
+        memcpy(buffer, value.c_str(), value.length() + 1);
     }
 
-    IR* CallExpr::get(Context* ctx, IRBuilder &IRB) const
+    const IR* CallExpr::get(Context* ctx, IRBuilder &IRB) const
     {
+        /* Resolve the function declaration */
+        const Function* F = ctx->get_module()->get_function(function);
+        if (!F)
+        {
+            ctx->emit_error(this, "Undeclared function: " + function);
+        }
 
-        return nullptr;
+        std::vector<const IR*> args_ir;
+        for (const CallArguments* arg = arguments; arg; arg = arg->next)
+        {
+            args_ir.push_back(arg->value->get(ctx, IRB));
+        }
+
+        return IRB.add<CallInstr>(F, args_ir);
     }
 
-    IR* AssignExpr::get(Context* ctx, IRBuilder &IRB) const
+    const IR* AssignExpr::get(Context* ctx, IRBuilder &IRB) const
     {
-        return nullptr;
+        const IR* out = value->get(ctx, IRB);
+        const IR* sink_val = sink->get(ctx, IRB);
+        auto* ref = dynamic_cast<const Reference*>(sink_val);
+        if (!ref)
+        {
+            ctx->emit_error(sink, "Expression does not return a reference");
+            return nullptr;
+        }
+
+        IRB.add<MovInstr>(ref, out);
+        return out;
     }
 
-    void ASTFunction::add(Context* ctx, IRBuilder &IRB) const
+    void ASTFunctionDefine::add(Context* ctx, IRBuilder &IRB) const
     {
+        ctx->enter_scope(Scope::FUNCTION, name);
+        auto* f = dynamic_cast<Function*>(symbol);
+        assert(f);
 
+        f->set_entry_block(ctx->scope()->get_entry_block());
+        IRB.set_insertion_point(f->get_entry_block());
+
+        /* Declare the arguments */
+        for (Arguments* iter = args; iter; iter = iter->next)
+        {
+            iter->decl->variable->set(IRB.add<AllocaInstr>(iter->decl->type));
+        }
+
+        /* Add the function code */
+        body->add(ctx, IRB);
+
+        /* Clean up */
+        IRB.set_insertion_point(nullptr);
+        ctx->exit_scope();
     }
 
     void ASTGlobalVariable::add(Context* ctx, IRBuilder &IRB) const
     {
+        auto* gv = dynamic_cast<GlobalVariable*>(symbol);
+        assert(gv);
+        decl->variable->set(gv);
 
+        if (initializer)
+        {
+            IRB.set_insertion_point(ctx->get_module()->constructor());
+            IRB.add<MovInstr>(gv, initializer->get(ctx, IRB));
+        }
     }
 
     Block::~Block()

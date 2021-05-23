@@ -1,3 +1,6 @@
+void print(char lit, i32 a);
+void my_function(f32 a);
+
 void main(f32 argument, i32 arg2, i32 arg3)
 {
     print("%f", argument);
@@ -10,6 +13,7 @@ void main(f32 argument, i32 arg2, i32 arg3)
         {
             i32 j = 0;
             j = j + 1;
+            ++j++;
             break;
         }
 

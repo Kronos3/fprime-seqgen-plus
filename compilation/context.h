@@ -17,19 +17,19 @@ namespace cc
     class Variable : public Value
     {
         TypeDecl* declaration;
-        Reference* value;
+        const Reference* value;
     public:
         explicit Variable(TypeDecl* decl) : declaration(decl), value(nullptr) {}
 
 
 
-        void set(Reference* value_)
+        void set(const Reference* value_)
         {
             assert(!value && "Value already set");
             value = value_;
         }
 
-        Reference* get()
+        const Reference* get()
         {
             assert(value && "Variable not set() yet");
             return value;
@@ -92,7 +92,10 @@ namespace cc
 
         std::string get_lineage() const;
         Block* new_block();
-        Block* get_entry_block() { return entry_block; }
+        Block* get_entry_block() const { return entry_block; }
+        uint32_t block_count() const { return blocks.size(); }
+        Scope* next() const { return younger_sibling; }
+        Scope* child() const { return first_child; }
 
         virtual LoopScope* get_loop();
 

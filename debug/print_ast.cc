@@ -8,12 +8,6 @@ using namespace cc;
 
 namespace cc
 {
-    static const char* var_type_names[] = {
-            "VOID",
-            "I32",
-            "F64"
-    };
-
     void print_indent(std::stringstream &ss, int indent);
 
     void print_for(std::stringstream &ss, const ForLoop* t, int indent);
@@ -135,12 +129,12 @@ namespace cc
         return ss;
     }
 
-    std::stringstream &p(std::stringstream &ss, const ASTFunction* self)
+    std::stringstream &p(std::stringstream &ss, const ASTFunctionDefine* self)
     {
         ss << self->return_type->as_string() << " " << self->name << "(";
         for (Arguments* iter = self->args; iter; iter = iter->next)
         {
-            ss << self->return_type->as_string() << " " << iter->decl->name;
+            ss << iter->decl->type->as_string() << " " << iter->decl->name;
             if (iter->next)
             {
                 ss << ", ";
@@ -162,9 +156,9 @@ namespace cc
     {
         for (const ASTGlobal* iter = self; iter; iter = iter->next)
         {
-            if (dynamic_cast<const ASTFunction*>(iter))
+            if (dynamic_cast<const ASTFunctionDefine*>(iter))
             {
-                p(ss, dynamic_cast<const ASTFunction*>(iter)) << "\n";
+                p(ss, dynamic_cast<const ASTFunctionDefine*>(iter)) << "\n";
             }
             else if (dynamic_cast<const ASTGlobalVariable*>(iter))
             {

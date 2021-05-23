@@ -20,6 +20,7 @@ namespace cc
 
         bool parse();
         bool resolve();
+        bool ir();
         bool put_errors() const;
 
     public:
@@ -29,6 +30,8 @@ namespace cc
         void dump_ast() const;
 
         ~Compiler();
+
+        void dump_ir() const;
     };
 }
 

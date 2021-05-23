@@ -19,19 +19,6 @@ namespace cc
         }
     };
 
-    struct Value
-    {
-        virtual ~Value() = default;
-    };
-
-    struct IR : Value
-    {
-    };
-
-    struct Reference : IR
-    {
-    };
-
     template<typename T_,
             typename... Args>
     std::string variadic_string(const char* format,
@@ -52,6 +39,35 @@ namespace cc
     }
 
     std::vector<std::string> split_string(const std::string &str, char delimiter);
+
+    struct Value
+    {
+        virtual ~Value() = default;
+    };
+
+    class IR : public Value
+    {
+        int value_id;
+    public:
+        IR()
+        {
+            static int value_id_c = 0;
+            value_id = value_id_c++;
+        }
+
+        int get_id() const { return value_id; }
+        virtual std::string as_string() const { return variadic_string("%%%d", get_id()); }
+    };
+
+    struct Constant : public IR
+    {
+        virtual size_t get_size() const = 0;
+        virtual void write(void* buffer) const = 0;
+    };
+
+    struct Reference : public IR
+    {
+    };
 }
 
 #endif //COMMON_H
