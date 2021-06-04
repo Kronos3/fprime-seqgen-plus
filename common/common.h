@@ -8,6 +8,45 @@
 
 namespace cc
 {
+
+#define ALL_OPERATORS_VIRTUAL \
+    virtual Constant* operator+(const Constant* c) const = 0; \
+    virtual Constant* operator-(const Constant* c) const = 0; \
+    virtual Constant* operator/(const Constant* c) const = 0; \
+    virtual Constant* operator*(const Constant* c) const = 0; \
+    virtual Constant* operator&(const Constant* c) const = 0; \
+    virtual Constant* operator|(const Constant* c) const = 0; \
+    virtual Constant* operator^(const Constant* c) const = 0; \
+    virtual Constant* operator<(const Constant* c) const = 0; \
+    virtual Constant* operator>(const Constant* c) const = 0; \
+    virtual Constant* operator<=(const Constant* c) const = 0; \
+    virtual Constant* operator>=(const Constant* c) const = 0; \
+    virtual Constant* operator==(const Constant* c) const = 0; \
+    virtual Constant* operator!=(const Constant* c) const = 0; \
+    virtual Constant* operator&&(const Constant* c) const = 0; \
+    virtual Constant* operator||(const Constant* c) const = 0; \
+    virtual Constant* operator~() const = 0; \
+    virtual Constant* operator!() const = 0;
+
+#define ALL_OPERATORS_DECL \
+    Constant* operator+(const Constant* c) const override; \
+    Constant* operator-(const Constant* c) const override; \
+    Constant* operator/(const Constant* c) const override; \
+    Constant* operator*(const Constant* c) const override; \
+    Constant* operator&(const Constant* c) const override; \
+    Constant* operator|(const Constant* c) const override; \
+    Constant* operator^(const Constant* c) const override; \
+    Constant* operator<(const Constant* c) const override; \
+    Constant* operator>(const Constant* c) const override; \
+    Constant* operator<=(const Constant* c) const override; \
+    Constant* operator>=(const Constant* c) const override; \
+    Constant* operator==(const Constant* c) const override; \
+    Constant* operator!=(const Constant* c) const override; \
+    Constant* operator&&(const Constant* c) const override; \
+    Constant* operator||(const Constant* c) const override; \
+    Constant* operator~() const override; \
+    Constant* operator!() const override;
+
     struct Exception : public std::exception
     {
         std::string _w;
@@ -63,6 +102,8 @@ namespace cc
     {
         virtual size_t get_size() const = 0;
         virtual void write(void* buffer) const = 0;
+
+        ALL_OPERATORS_VIRTUAL
     };
 
     struct Reference : public IR

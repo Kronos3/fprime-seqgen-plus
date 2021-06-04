@@ -64,7 +64,7 @@ namespace cc
 
         // Add the conditional instructions
         IRB.set_insertion_point(loop_block);
-        IRB.add<BranchInstr>(post_block, new L_NotInstr(conditional->get(ctx, IRB)));
+        IRB.add<BranchInstr>(post_block, IRB.add<L_NotInstr>(conditional->get(ctx, IRB)));
 
         // Loop
         IRB.add<JumpInstr>(loop_block);
@@ -209,16 +209,10 @@ namespace cc
         return this;
     }
 
-    std::string ImmIntExpr::get_name() const
+    std::string NumericExpr::get_name() const
     {
         static int i = 0;
-        return variadic_string("integer.%d", i++);
-    }
-
-    std::string ImmFloatExpr::get_name() const
-    {
-        static int i = 0;
-        return variadic_string("float.%d", i++);
+        return variadic_string("imm.%d", i++);
     }
 
     std::string LiteralExpr::get_name() const
@@ -230,6 +224,213 @@ namespace cc
     const IR* VariableExpr::get(Context* ctx, IRBuilder &IRB) const
     {
         return value->get();
+    }
+
+    Constant* UnaryExpr::get_constant(Context* ctx) const
+    {
+        std::unique_ptr<Constant> eval(operand->get_constant(ctx));
+        if (!eval)
+        {
+            return nullptr;
+        }
+
+        try
+        {
+            switch (op)
+            {
+            case B_NOT: return ~*eval;
+            case L_NOT: return !*eval;
+            default:
+                ctx->emit_error(this, "Illegal constant expression");
+                return nullptr;
+            }
+        }
+        catch (Exception& e)
+        {
+            ctx->emit_error(this, e.what());
+            return nullptr;
+        }
+    }
+
+    Constant* BinaryExpr::get_constant(Context* ctx) const
+    {
+        std::unique_ptr<Constant> c_a(a->get_constant(ctx));
+        std::unique_ptr<Constant> c_b(b->get_constant(ctx));
+
+        if (!c_a || !c_b)
+        {
+            return nullptr;
+        }
+
+        try
+        {
+            switch (op)
+            {
+            case A_ADD: return *c_a + &*c_b;
+            case A_SUB: return *c_a - &*c_b;
+            case A_DIV: return *c_a / &*c_b;
+            case A_MUL: return *c_a * &*c_b;
+            case B_AND: return *c_a & &*c_b;
+            case B_OR: return *c_a | &*c_b;
+            case B_XOR: return *c_a ^ &*c_b;
+            case L_LT: return *c_a < &*c_b;
+            case L_GT: return *c_a > &*c_b;
+            case L_LE: return *c_a <= &*c_b;
+            case L_GE: return *c_a >= &*c_b;
+            case L_EQ: return *c_a == &*c_b;
+            case L_AND: return *c_a && &*c_b;
+            case L_OR: return *c_a || &*c_b;
+            }
+        }
+        catch (Exception& e)
+        {
+            ctx->emit_error(this, e.what());
+            return nullptr;
+        }
+
+        throw Exception("Invalid binary operator");
+    }
+
+#define BINARY_OPERATOR_IMPL_BOTH(name, op) \
+    Constant* name::operator op(const Constant* c) const \
+    { \
+        const auto* n = dynamic_cast<const NumericExpr*>(c); \
+        if (!n) \
+        { \
+            throw Exception("Invalid operator with non-numeric constant"); \
+        } \
+        if (type == FLOATING || n->type == FLOATING) \
+        { \
+            return new NumericExpr( \
+                    this, FLOATING, \
+                    (type == FLOATING ? value.floating : static_cast<double>(value.integer)) \
+                    op \
+                    (n->type == FLOATING ? n->value.floating : static_cast<double>(n->value.integer))); \
+        } \
+        return new name(this, INTEGER, value.integer op n->value.integer); \
+    }
+
+#define BINARY_OPERATOR_IMPL_INT(name, op) \
+    Constant* name::operator op(const Constant* c) const \
+    { \
+        const auto* n = dynamic_cast<const NumericExpr*>(c); \
+        if (!n) \
+        { \
+            throw Exception("Invalid operator with non-numeric constant"); \
+        } \
+        if (type == FLOATING || n->type == FLOATING) \
+        { \
+            throw Exception("Illegal non-integer constant"); \
+        } \
+        return new name(this, INTEGER, value.integer op n->value.integer); \
+    }
+
+#define BINARY_OPERATOR_ILLEGAL(name, op) \
+    Constant* name::operator op(const Constant* c) const { \
+        throw Exception("Illegal constant binary operator with " #name); \
+    }
+
+#define BINARY_OPERATOR_CONST_RET(name, op, expr) \
+    Constant* name::operator op(const Constant* c) const { \
+        expr; \
+    }
+
+#define UNARY_OPERATOR_ILLEGAL(name, op) \
+    Constant* name::operator op() const { \
+        throw Exception("Illegal constant unary operator with " #name); \
+    }
+
+#define UNARY_OPERATOR_CONST_RET(name, op, expr) \
+    Constant* name::operator op() const { \
+        expr; \
+    }
+
+    BINARY_OPERATOR_IMPL_BOTH(NumericExpr, +)
+    BINARY_OPERATOR_IMPL_BOTH(NumericExpr, -)
+    BINARY_OPERATOR_IMPL_BOTH(NumericExpr, /)
+    BINARY_OPERATOR_IMPL_BOTH(NumericExpr, *)
+    BINARY_OPERATOR_IMPL_BOTH(NumericExpr, <)
+    BINARY_OPERATOR_IMPL_BOTH(NumericExpr, >)
+    BINARY_OPERATOR_IMPL_BOTH(NumericExpr, <=)
+    BINARY_OPERATOR_IMPL_BOTH(NumericExpr, >=)
+    BINARY_OPERATOR_IMPL_BOTH(NumericExpr, ==)
+    BINARY_OPERATOR_IMPL_BOTH(NumericExpr, !=)
+    BINARY_OPERATOR_IMPL_BOTH(NumericExpr, &&)
+    BINARY_OPERATOR_IMPL_BOTH(NumericExpr, ||)
+    BINARY_OPERATOR_IMPL_INT(NumericExpr, &)
+    BINARY_OPERATOR_IMPL_INT(NumericExpr, |)
+    BINARY_OPERATOR_IMPL_INT(NumericExpr, ^)
+
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, +);
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, -);
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, /);
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, *);
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, <);
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, >);
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, <=);
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, >=);
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, &);
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, |);
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, ^);
+    UNARY_OPERATOR_ILLEGAL(LiteralExpr, ~);
+    BINARY_OPERATOR_CONST_RET(LiteralExpr, ==, {
+        NumericExpr zero(this, NumericExpr::INTEGER, 0);
+        return *c == &zero;
+    })
+    BINARY_OPERATOR_CONST_RET(LiteralExpr, !=, {
+        NumericExpr zero(this, NumericExpr::INTEGER, 0);
+        return *c != &zero;
+    })
+    BINARY_OPERATOR_CONST_RET(LiteralExpr, &&, {
+        NumericExpr zero(this, NumericExpr::INTEGER, 0);
+        return *c != &zero;
+    })
+    BINARY_OPERATOR_CONST_RET(LiteralExpr, ||, {
+        NumericExpr _true(this, NumericExpr::INTEGER, 1);
+        return _true.get_constant(nullptr);
+    })
+    UNARY_OPERATOR_CONST_RET(LiteralExpr, !, {
+        NumericExpr _false(this, NumericExpr::INTEGER, 0);
+        return _false.get_constant(nullptr);
+    })
+
+    Constant* NumericExpr::operator~() const
+    {
+        if (type == FLOATING)
+        {
+            throw Exception("Invalid unary expression on floating point literal");
+        }
+
+        return new NumericExpr(this, INTEGER, ~value.integer);
+    }
+
+    Constant* NumericExpr::operator!() const
+    {
+        if (type == FLOATING)
+        {
+            throw Exception("Invalid unary expression on floating point literal");
+        }
+
+        return new NumericExpr(this, INTEGER, !value.integer);
+    }
+
+    Constant* VariableExpr::get_constant(Context* ctx) const
+    {
+        // TODO Support extrapolating from 'const'
+        ctx->emit_error(this, "Constant expressions cannot have variables");
+        return nullptr;
+    }
+
+    Constant* AssignExpr::get_constant(Context* ctx) const
+    {
+        ctx->emit_error(this, "Assign expressions are not Constant");
+        return nullptr;
+    }
+
+    Constant* CallExpr::get_constant(Context* ctx) const
+    {
+        ctx->emit_error(this, "Call expressions are not Constant");
+        return nullptr;
     }
 
     void LiteralExpr::write(void* buffer) const
@@ -302,7 +503,7 @@ namespace cc
         if (initializer)
         {
             IRB.set_insertion_point(ctx->get_module()->constructor());
-            IRB.add<MovInstr>(gv, initializer->get(ctx, IRB));
+            IRB.add<MovInstr>(gv, initializer);
         }
     }
 

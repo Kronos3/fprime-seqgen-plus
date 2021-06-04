@@ -22,20 +22,20 @@ namespace cc
     class Function;
     class GlobalVariable;
 
-    struct ASTValue : public Value
+    struct ASTPosition
     {
-        struct TokenPosition
-        {
-            uint32_t line;
-            uint32_t start_col;
-        };
-
         uint32_t line;
         uint32_t col;
 
-        explicit ASTValue(const ASTValue* v): line(v->line), col(v->col) {}
-        explicit ASTValue(const TokenPosition* position) : line(position->line), col(position->start_col) {}
-        ASTValue(uint32_t line, uint32_t start_col) : line(line), col(start_col) {}
+        explicit ASTPosition(const ASTPosition* position) : line(position->line), col(position->col) {}
+        ASTPosition(uint32_t line, uint32_t col) : line(line), col(col) {}
+    };
+
+
+    struct ASTValue : public Value, public ASTPosition
+    {
+        explicit ASTValue(const ASTPosition* position) : ASTPosition(position) {}
+        ASTValue(uint32_t line, uint32_t start_col) : ASTPosition(line, start_col) {}
 
         typedef void (*TraverseCB)(ASTValue*, Context* ctx, void*);
         virtual void traverse(TraverseCB cb, Context* ctx, void* data) { cb(this, ctx, data); };
@@ -44,12 +44,9 @@ namespace cc
 
     struct ASTException : Exception
     {
-        ASTValue self;
-        ASTException(const ASTValue* self, const std::string& what) :
-            Exception(what), self(*self) {}
-
-        ASTException(const ASTValue::TokenPosition* position, const std::string& what) :
-            Exception(what), self(position)
+        const ASTPosition self;
+        ASTException(const ASTPosition* position, const std::string& what) :
+            Exception(what), self(*position)
         {
         }
     };
@@ -60,7 +57,7 @@ namespace cc
         std::string name;
         Variable* variable;
 
-        TypeDecl(const TokenPosition* position, const Type* type, const char* name_) :
+        TypeDecl(const ASTPosition* position, const Type* type, const char* name_) :
                 ASTValue(position), type(type), variable(nullptr)
         {
             TAKE_STRING(name, name_);
@@ -71,15 +68,11 @@ namespace cc
 
     struct FieldDecl : public ASTValue
     {
-        const Type* type;
-        std::string name;
+        TypeDecl* decl;
         FieldDecl* next;
 
-        FieldDecl(const TokenPosition* position, const Type* type, const char* name_) :
-                  ASTValue(position), type(type), next(nullptr)
-        {
-            TAKE_STRING(name, name_);
-        }
+        FieldDecl(const ASTPosition* position, TypeDecl* decl) :
+                  ASTValue(position), decl(decl), next(nullptr) {}
 
         ~FieldDecl() override
         {
@@ -91,20 +84,22 @@ namespace cc
     {
         virtual void add(Context* ctx, IRBuilder &IRB) const = 0;
         explicit Buildable(const ASTValue* values) : ASTValue(values) {}
-        explicit Buildable(const TokenPosition* position) : ASTValue(position) {}
+        explicit Buildable(const ASTPosition* position) : ASTValue(position) {}
     };
 
     struct Expression : public ASTValue
     {
         explicit Expression(const ASTValue* values) : ASTValue(values) {}
-        explicit Expression(const ASTValue::TokenPosition* position) : ASTValue(position) {}
+        explicit Expression(const ASTValue::ASTPosition* position) : ASTValue(position) {}
+
+        virtual Constant* get_constant(Context* ctx) const = 0;
         virtual const IR* get(Context* ctx, IRBuilder &IRB) const = 0;
     };
     
     struct Statement : public Buildable
     {
         explicit Statement(const ASTValue* values) : Buildable(values) {}
-        explicit Statement(const ASTValue::TokenPosition* position) : Buildable(position) {}
+        explicit Statement(const ASTValue::ASTPosition* position) : Buildable(position) {}
     };
     
     struct Loop : public Statement
@@ -231,13 +226,13 @@ namespace cc
 
     struct Continue : public Statement
     {
-        explicit Continue(const ASTValue::TokenPosition* position) : Statement(position) {}
+        explicit Continue(const ASTValue::ASTPosition* position) : Statement(position) {}
         void add(Context* ctx, IRBuilder &IRB) const override;
     };
 
     struct Break : public Statement
     {
-        explicit Break(const ASTValue::TokenPosition* position) : Statement(position) {}
+        explicit Break(const ASTValue::ASTPosition* position) : Statement(position) {}
         void add(Context* ctx, IRBuilder &IRB) const override;
     };
 
@@ -245,9 +240,9 @@ namespace cc
     {
         Expression* return_value;
 
-        explicit Return(const ASTValue::TokenPosition* position) :
+        explicit Return(const ASTValue::ASTPosition* position) :
             Statement(position), return_value(nullptr) {}
-        explicit Return(const ASTValue::TokenPosition* position, Expression* return_value) :
+        explicit Return(const ASTValue::ASTPosition* position, Expression* return_value) :
             Statement(position), return_value(return_value) {}
 
         void traverse(TraverseCB cb, Context* ctx, void* data) override;
@@ -284,6 +279,7 @@ namespace cc
         Expression* b;
         binary_operator_t op;
 
+        Constant* get_constant(Context* ctx) const override;
         BinaryExpr(Expression* a, Expression* b, binary_operator_t op)
                 : Expression(a), a(a), b(b), op(op) {}
 
@@ -310,6 +306,7 @@ namespace cc
         };
 
         Expression* operand;
+        Constant* get_constant(Context* ctx) const override;
         unary_operator_t op;
         UnaryExpr(Expression* operand, unary_operator_t op) :
                 Expression(operand), operand(operand), op(op) {}
@@ -324,44 +321,52 @@ namespace cc
 
     struct ASTConstant : public Constant, public Expression
     {
-        explicit ASTConstant(const ASTValue::TokenPosition* position) : Expression(position) {}
+        explicit ASTConstant(const ASTValue::ASTPosition* position) : Expression(position) {}
         const IR* get(Context* ctx, IRBuilder &IRB) const override;
         virtual std::string get_name() const = 0;
     };
 
-    struct ImmIntExpr : public ASTConstant
+    struct NumericExpr : public ASTConstant
     {
-        int value;
-        explicit ImmIntExpr(const TokenPosition* position, int value) : ASTConstant(position), value(value) {}
-
-        size_t get_size() const override { return 4; }
-        void write(void* buffer) const override
+        enum numeric_type_t
         {
-            *static_cast<int*>(buffer) = value;
+            INTEGER,
+            FLOATING
+        };
+
+        union {
+            int64_t integer;
+            double floating;
+        } value;
+        numeric_type_t type;
+
+        template<typename T>
+        explicit NumericExpr(const ASTPosition* position,
+                             numeric_type_t type,
+                             T value_)
+        : ASTConstant(position),
+        type(type), value({0})
+        {
+            if (type == INTEGER) value.integer = value_;
+            else if (type == FLOATING) value.floating = value_;
         }
 
-        std::string get_name() const override;
-    };
-
-    struct ImmFloatExpr : public ASTConstant
-    {
-        double value;
-        explicit ImmFloatExpr(const TokenPosition* position, double value) : ASTConstant(position), value(value) {}
-
-        size_t get_size() const override { return 8; }
+        size_t get_size() const override { return sizeof(value); }
         void write(void* buffer) const override
         {
-            *static_cast<double*>(buffer) = value;
+            *static_cast<int64_t*>(buffer) = value.integer;
         }
 
+        Constant* get_constant(Context* ctx) const override { return new NumericExpr(*this); }
         std::string get_name() const override;
-        std::string as_string() const override { return variadic_string("%%%d=%f", get_id(), value); }
+
+        ALL_OPERATORS_DECL
     };
 
     struct LiteralExpr : public ASTConstant
     {
         std::string value;
-        explicit LiteralExpr(const TokenPosition* position, const char* value_) : ASTConstant(position)
+        explicit LiteralExpr(const ASTPosition* position, const char* value_) : ASTConstant(position)
         {
             TAKE_STRING(value, value_);
         }
@@ -369,7 +374,10 @@ namespace cc
         size_t get_size() const override { return value.length() + 1; }
         void write(void* buffer) const override;
         std::string get_name() const override;
+        Constant* get_constant(Context* ctx) const override { return new LiteralExpr(*this); }
         std::string as_string() const override { return variadic_string("%%%d=%s", get_id(), value.c_str()); }
+
+        ALL_OPERATORS_DECL
     };
 
     struct VariableExpr : public Expression
@@ -377,12 +385,13 @@ namespace cc
         std::string variable;
         Variable* value;
 
-        explicit VariableExpr(const TokenPosition* position, const char* value_) : Expression(position), value(nullptr)
+        explicit VariableExpr(const ASTPosition* position, const char* value_) : Expression(position), value(nullptr)
         {
             TAKE_STRING(variable, value_);
         }
 
         void resolution_pass(Context* context) override;
+        Constant* get_constant(Context* ctx) const override;
         const IR* get(Context* ctx, IRBuilder &IRB) const override;
     };
 
@@ -407,7 +416,7 @@ namespace cc
         std::string function;
         CallArguments* arguments;
 
-        explicit CallExpr(const TokenPosition* position, const char* name, CallArguments* arguments = nullptr) :
+        explicit CallExpr(const ASTPosition* position, const char* name, CallArguments* arguments = nullptr) :
                 Expression(position), arguments(arguments)
         {
             TAKE_STRING(function, name);
@@ -418,6 +427,7 @@ namespace cc
             delete arguments;
         }
 
+        Constant* get_constant(Context* ctx) const override;
         void traverse(TraverseCB cb, Context* ctx, void* data) override;
         const IR* get(Context* ctx, IRBuilder &IRB) const override;
     };
@@ -436,6 +446,8 @@ namespace cc
         }
 
         void traverse(TraverseCB cb, Context* ctx, void* data) override;
+
+        Constant* get_constant(Context* ctx) const override;
         const IR* get(Context* ctx, IRBuilder &IRB) const override;
     };
 
@@ -461,7 +473,7 @@ namespace cc
         ASTGlobal* next;
 
         explicit ASTGlobal(const ASTValue* values) : Buildable(values), next(nullptr), symbol(nullptr) {}
-        explicit ASTGlobal(const TokenPosition* position) : Buildable(position), next(nullptr), symbol(nullptr) {}
+        explicit ASTGlobal(const ASTPosition* position) : Buildable(position), next(nullptr), symbol(nullptr) {}
 
         ~ASTGlobal() override
         {
@@ -475,7 +487,7 @@ namespace cc
         const Type* return_type;
         Arguments* args;
 
-        ASTFunction(const TokenPosition* position, const Type* return_type, const char* name_, Arguments* args)
+        ASTFunction(const ASTPosition* position, const Type* return_type, const char* name_, Arguments* args)
                 : ASTGlobal(position), return_type(return_type), args(args)
         {
             TAKE_STRING(name, name_);
@@ -494,7 +506,7 @@ namespace cc
     struct ASTFunctionDefine : public ASTFunction
     {
         MultiStatement* body;
-        ASTFunctionDefine(const TokenPosition* position, const Type* return_type, const char* name_,
+        ASTFunctionDefine(const ASTPosition* position, const Type* return_type, const char* name_,
                           Arguments* args, MultiStatement* body)
                 : ASTFunction(position, return_type, name_, args), body(body) {}
 
@@ -508,19 +520,59 @@ namespace cc
         void traverse(TraverseCB cb, Context* ctx, void* data) override;
     };
 
-    struct ASTGlobalVariable : ASTGlobal
+    struct ASTGlobalVariable : public ASTGlobal
     {
         TypeDecl* decl;
-        Expression* initializer;
+        Constant* initializer;
         Variable* variable;
 
-        explicit ASTGlobalVariable(TypeDecl* decl, Expression* initializer = nullptr) :
-                ASTGlobal(decl), decl(decl), variable(nullptr), initializer(initializer) {}
+        explicit ASTGlobalVariable(Decl* decl_stmt) :
+        ASTGlobal(decl_stmt->decl), decl(decl_stmt->decl),
+        variable(nullptr), initializer(nullptr)
+        {
+            if (dynamic_cast<DeclInit*>(decl_stmt))
+            {
+                initializer = dynamic_cast<DeclInit*>(decl_stmt)->initializer->get_constant(nullptr);
+            }
+        }
 
         void traverse(TraverseCB cb, Context* ctx, void* data) override;
         void add(Context* ctx, IRBuilder &IRB) const override;
 
         void resolution_pass(Context* context) override;
+    };
+
+    struct StructDecl : public ASTGlobal
+    {
+        std::string name;
+        FieldDecl* fields;
+        const Type* type;
+
+        StructDecl(const ASTPosition* position, Context* ctx,
+                   std::string name, FieldDecl* fields);
+
+        StructDecl(const ASTPosition* position, Context* ctx, FieldDecl* fields) :
+                StructDecl(position, ctx, get_anonymous_name(position), fields) {}
+
+        StructDecl(const ASTPosition* position, Context* ctx,
+                   char* name_, FieldDecl* fields) :
+                StructDecl(position, ctx, std::string(name_), fields)
+        {
+            free(name_);
+        }
+
+        const Type* get_type() const { return type; }
+        void add(Context* ctx, IRBuilder &IRB) const override { };
+
+        static std::string get_anonymous_name(const ASTPosition* position)
+        {
+            return variadic_string(".anonymous.structure@%d:%d", position->line, position->col);
+        }
+
+        ~StructDecl() override
+        {
+            delete fields;
+        }
     };
 }
 

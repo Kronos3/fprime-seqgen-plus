@@ -4,7 +4,14 @@ project(cc VERSION 1.0)
 enable_language(CXX)
 set(CXX_STANDARD 11)
 
+option(SANITIZER_BUILD "Build with address sanitizer" OFF)
+
 add_subdirectory(neoast)
+
+if (SANITIZER_BUILD)
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
+endif()
 
 BuildParser(cc_lib grammar/grammar.y CXX)
 add_executable(cc

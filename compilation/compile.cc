@@ -96,7 +96,8 @@ namespace cc
 
             std::cerr << std::string(e.self.col + digit_with + 1, '-')
                       << "^\n"
-                      << filename << ":" << e.self.line << " " << message << ": " << e.what() << "\n\n";
+                      << filename << ":" << e.self.line << ":" << e.self.col
+                      << " " << message << ": " << e.what() << "\n\n";
         }
     }
 
@@ -152,25 +153,13 @@ namespace cc
 
     bool Compiler::execute()
     {
-        if (not parse())
-        {
-            return false;
-        }
-
+        if (not parse()) return false;
         dump_ast();
 
-        if (not resolve())
-        {
-            return false;
-        }
-
-        if (not ir())
-        {
-            return false;
-        }
+        if (not resolve()) return false;
+        if (not ir()) return false;
 
         dump_ir();
-
         return true;
     }
 

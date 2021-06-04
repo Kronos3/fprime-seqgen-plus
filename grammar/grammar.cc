@@ -18,6 +18,7 @@ static struct KeywordDecl_ {
         {"continue", CONTINUE},
         {"break", BREAK},
         {"return", RETURN},
+        {"struct", STRUCT},
         {nullptr}
 };
 
@@ -36,12 +37,11 @@ int handle_keyword(Context* ctx, const char* text, void* yyval)
         }
     }
 
-    // Try to parse the typename
-    const Type* parsed = Type::create(ctx, text);
-    if (parsed)
+    const Type* type = Type::get(ctx, text);
+    if (type)
     {
-        static_cast<NeoastUnion*>(yyval)->type = parsed;
-        return TYPE;
+        static_cast<NeoastUnion*>(yyval)->type = type;
+        return TYPENAME;
     }
 
     return -1;

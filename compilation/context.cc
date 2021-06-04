@@ -207,6 +207,12 @@ namespace cc
         delete primitives[Type::F32];
         delete primitives[Type::F64];
         delete primitives[Type::PTR];
+
+        for (auto& iter : complex_types)
+        {
+            delete iter.second;
+        }
+        complex_types.clear();
     }
 
     Context::Context() :
@@ -222,5 +228,18 @@ namespace cc
         primitives[Type::F32] = new PrimitiveType<Type::F32>(this);
         primitives[Type::F64] = new PrimitiveType<Type::F64>(this);
         primitives[Type::PTR] = new PrimitiveType<Type::PTR>(this);
+    }
+
+    const Type* Context::declare_structure(StructDecl* structure)
+    {
+        if (complex_types.find(structure->name) != complex_types.end())
+        {
+            emit_error(structure, "Duplicate typename definition: " + structure->name);
+            return nullptr;
+        }
+
+        auto* out = new StructType(this, structure);
+        complex_types[structure->name] = out;
+        return out;
     }
 }

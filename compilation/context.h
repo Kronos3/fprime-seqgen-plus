@@ -145,12 +145,16 @@ namespace cc
         std::vector<ASTException> errors;
         std::vector<ASTException> warnings;
 
+        std::unordered_map<std::string, Type*> complex_types;
+
         Type* primitives[Type::P_N]{nullptr};
     public:
         Context();
 
         Variable* get_variable(const std::string& name) const;
         Variable* declare_variable(TypeDecl* decl);
+        const Type* declare_structure(StructDecl* structure);
+
         Scope* scope() { return tail; }
 
         int get_ptr_size() const { /* TODO get from platform */ return 4; }
@@ -164,6 +168,16 @@ namespace cc
         {
             static_assert(T < Type::ENUM, "Only primitives are allowed here");
             return primitives[T];
+        }
+
+        const Type* type(const std::string &name) const
+        {
+            if (complex_types.find(name) == complex_types.end())
+            {
+                return nullptr;
+            }
+
+            return complex_types.at(name);
         }
 
         void start_scope_build() { build_scope = true; }

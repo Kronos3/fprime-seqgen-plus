@@ -5,6 +5,8 @@
 
 namespace cc
 {
+    struct PointerType;
+
     struct Type : public Value
     {
         enum primitive_t
@@ -35,23 +37,43 @@ namespace cc
         virtual int get_size() const;
         Context* get_ctx() const { return ctx; }
 
-        static const Type* create(Context* ctx, const std::string &name);
+        static const Type* get(Context* ctx, const std::string &name);
+
+        PointerType* get_pointer_to() const;
+        ~Type() override;
 
     protected:
+        PointerType* pointer_to;
         Context* ctx;
         primitive_t basic_type;
-        explicit Type(Context* ctx, primitive_t basic_type) : basic_type(basic_type), ctx(ctx) {}
+        explicit Type(Context* ctx, primitive_t basic_type) :
+        basic_type(basic_type), ctx(ctx), pointer_to(nullptr) {}
+    };
+
+    struct PointerType : public Type
+    {
+        explicit PointerType(const Type* pointed_type) :
+        Type(pointed_type->get_ctx(), PTR), pointed_type(pointed_type) {}
+        const Type* get_pointed_type() const { return pointed_type; }
+        std::string as_string() const override;
+
+    private:
+        const Type* pointed_type;
     };
 
     struct StructType : public Type
     {
-        explicit StructType(Context* ctx, FieldDecl* fields_ast);
+        std::string name;
+        explicit StructType(Context* ctx, StructDecl* ast);
         int get_size() const override { return size; };
         int get_offset(const std::string& field_name) const;
 
+        std::string as_string() const override;
+        ~StructType() override;
+
     private:
         int size;
-        std::vector<std::tuple<std::string, const Type*, int>> fields;
+        std::vector<std::pair<TypeDecl*, int>> fields;
     };
 
     template<Type::primitive_t T>

@@ -87,13 +87,18 @@ namespace cc
 
     std::stringstream &p(std::stringstream &ss, const Expression* self)
     {
-        if (dynamic_cast<const ImmIntExpr*>(self))
+        if (dynamic_cast<const NumericExpr*>(self))
         {
-            ss << "Int(" << dynamic_cast<const ImmIntExpr*>(self)->value << ")";
-        }
-        else if (dynamic_cast<const ImmFloatExpr*>(self))
-        {
-            ss << "Float(" << dynamic_cast<const ImmFloatExpr*>(self)->value << ")";
+            const auto* self_c = dynamic_cast<const NumericExpr*>(self);
+            switch(self_c->type)
+            {
+                case NumericExpr::INTEGER:
+                    ss << "Int(" << self_c->value.integer << ")";
+                    break;
+                case NumericExpr::FLOATING:
+                    ss << "Float(" << self_c->value.floating << ")";
+                    break;
+            }
         }
         else if (dynamic_cast<const VariableExpr*>(self))
         {

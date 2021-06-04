@@ -1,10 +1,18 @@
 void print(char lit, i32 a);
 void my_function(f32 a);
 
+struct MyType
+{
+    f32 field_1;
+    i32 field_2;
+};
+
 void main(f32 argument, i32 arg2, i32 arg3)
 {
     print("%f", argument);
     print("%f", argument);
+
+    MyType**** ** * declare;
     
     for (i32 i = 0; i < 4; i++)
     {

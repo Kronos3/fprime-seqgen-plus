@@ -141,11 +141,6 @@ namespace cc
     void ASTGlobalVariable::traverse(ASTValue::TraverseCB cb, Context* ctx, void* data)
     {
         decl->traverse(cb, ctx, data);
-        if (initializer)
-        {
-            initializer->traverse(cb, ctx, data);
-        }
-
         ASTValue::traverse(cb, ctx, data);
     }
 
