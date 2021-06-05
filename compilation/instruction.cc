@@ -18,6 +18,7 @@ namespace cc
 
         // Add the initial instructions to the parent block
         // we don't want to execute these multiple times
+        IRB.set_insertion_point(parent_block);
         initial->add(ctx, IRB);
 
         // Preemptively create a block that will be jumped
@@ -103,7 +104,7 @@ namespace cc
 
     void If::add(Context* ctx, IRBuilder &IRB) const
     {
-        Block* then_block = ctx->scope()->new_block();
+        Block* then_block = ctx->scope()->new_block("then");
         IRB.add<BranchInstr>(then_block, clause->get(ctx, IRB));
 
         Block* post_block = ctx->scope()->new_block();
@@ -111,7 +112,7 @@ namespace cc
 
         if (else_stmt)
         {
-            Block* else_block = ctx->scope()->new_block();
+            Block* else_block = ctx->scope()->new_block("else");
             else_block->chain(post_block);
             IRB.add<JumpInstr>(else_block, true);
 
@@ -209,16 +210,10 @@ namespace cc
         return this;
     }
 
-    std::string NumericExpr::get_name() const
+    std::string ConstantExpr::get_name() const
     {
         static int i = 0;
         return variadic_string("imm.%d", i++);
-    }
-
-    std::string LiteralExpr::get_name() const
-    {
-        static int i = 0;
-        return variadic_string("str.%d", i++);
     }
 
     const IR* VariableExpr::get(Context* ctx, IRBuilder &IRB) const
@@ -234,21 +229,12 @@ namespace cc
             return nullptr;
         }
 
-        try
+        switch (op)
         {
-            switch (op)
-            {
             case B_NOT: return ~*eval;
             case L_NOT: return !*eval;
             default:
-                ctx->emit_error(this, "Illegal constant expression");
-                return nullptr;
-            }
-        }
-        catch (Exception& e)
-        {
-            ctx->emit_error(this, e.what());
-            return nullptr;
+                throw ASTException(this, "Illegal constant expression");
         }
     }
 
@@ -262,10 +248,8 @@ namespace cc
             return nullptr;
         }
 
-        try
+        switch (op)
         {
-            switch (op)
-            {
             case A_ADD: return *c_a + &*c_b;
             case A_SUB: return *c_a - &*c_b;
             case A_DIV: return *c_a / &*c_b;
@@ -280,15 +264,9 @@ namespace cc
             case L_EQ: return *c_a == &*c_b;
             case L_AND: return *c_a && &*c_b;
             case L_OR: return *c_a || &*c_b;
-            }
-        }
-        catch (Exception& e)
-        {
-            ctx->emit_error(this, e.what());
-            return nullptr;
         }
 
-        throw Exception("Invalid binary operator");
+        throw ASTException(this, "Invalid binary operator");
     }
 
 #define BINARY_OPERATOR_IMPL_BOTH(name, op) \
@@ -297,7 +275,7 @@ namespace cc
         const auto* n = dynamic_cast<const NumericExpr*>(c); \
         if (!n) \
         { \
-            throw Exception("Invalid operator with non-numeric constant"); \
+            throw ASTException(this, "Invalid operator with non-numeric constant"); \
         } \
         if (type == FLOATING || n->type == FLOATING) \
         { \
@@ -316,18 +294,18 @@ namespace cc
         const auto* n = dynamic_cast<const NumericExpr*>(c); \
         if (!n) \
         { \
-            throw Exception("Invalid operator with non-numeric constant"); \
+            throw ASTException(this, "Invalid operator with non-numeric constant"); \
         } \
         if (type == FLOATING || n->type == FLOATING) \
         { \
-            throw Exception("Illegal non-integer constant"); \
+            throw ASTException(this, "Illegal non-integer constant"); \
         } \
         return new name(this, INTEGER, value.integer op n->value.integer); \
     }
 
 #define BINARY_OPERATOR_ILLEGAL(name, op) \
     Constant* name::operator op(const Constant* c) const { \
-        throw Exception("Illegal constant binary operator with " #name); \
+        throw ASTException(this, "Illegal constant binary operator with " #name); \
     }
 
 #define BINARY_OPERATOR_CONST_RET(name, op, expr) \
@@ -337,7 +315,7 @@ namespace cc
 
 #define UNARY_OPERATOR_ILLEGAL(name, op) \
     Constant* name::operator op() const { \
-        throw Exception("Illegal constant unary operator with " #name); \
+        throw ASTException(this, "Illegal constant unary operator with " #name); \
     }
 
 #define UNARY_OPERATOR_CONST_RET(name, op, expr) \
@@ -361,18 +339,18 @@ namespace cc
     BINARY_OPERATOR_IMPL_INT(NumericExpr, |)
     BINARY_OPERATOR_IMPL_INT(NumericExpr, ^)
 
-    BINARY_OPERATOR_ILLEGAL(LiteralExpr, +);
-    BINARY_OPERATOR_ILLEGAL(LiteralExpr, -);
-    BINARY_OPERATOR_ILLEGAL(LiteralExpr, /);
-    BINARY_OPERATOR_ILLEGAL(LiteralExpr, *);
-    BINARY_OPERATOR_ILLEGAL(LiteralExpr, <);
-    BINARY_OPERATOR_ILLEGAL(LiteralExpr, >);
-    BINARY_OPERATOR_ILLEGAL(LiteralExpr, <=);
-    BINARY_OPERATOR_ILLEGAL(LiteralExpr, >=);
-    BINARY_OPERATOR_ILLEGAL(LiteralExpr, &);
-    BINARY_OPERATOR_ILLEGAL(LiteralExpr, |);
-    BINARY_OPERATOR_ILLEGAL(LiteralExpr, ^);
-    UNARY_OPERATOR_ILLEGAL(LiteralExpr, ~);
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, +)
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, -)
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, /)
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, *)
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, <)
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, >)
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, <=)
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, >=)
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, &)
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, |)
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, ^)
+    UNARY_OPERATOR_ILLEGAL(LiteralExpr, ~)
     BINARY_OPERATOR_CONST_RET(LiteralExpr, ==, {
         NumericExpr zero(this, NumericExpr::INTEGER, 0);
         return *c == &zero;
@@ -394,11 +372,29 @@ namespace cc
         return _false.get_constant(nullptr);
     })
 
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, +, return *constant + c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, -, return *constant - c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, /, return *constant / c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, *, return *constant * c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, <, return *constant < c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, >, return *constant > c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, <=, return *constant <= c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, >=, return *constant >= c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, ==, return *constant == c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, !=, return *constant != c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, &&, return *constant && c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, ||, return *constant || c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, &, return *constant & c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, |, return *constant | c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, ^, return *constant ^ c;)
+    UNARY_OPERATOR_CONST_RET(ConstantExpr, ~, return ~*constant;)
+    UNARY_OPERATOR_CONST_RET(ConstantExpr, !, return !*constant;)
+
     Constant* NumericExpr::operator~() const
     {
         if (type == FLOATING)
         {
-            throw Exception("Invalid unary expression on floating point literal");
+            throw ASTException(this, "Invalid unary expression on floating point literal");
         }
 
         return new NumericExpr(this, INTEGER, ~value.integer);
@@ -408,7 +404,7 @@ namespace cc
     {
         if (type == FLOATING)
         {
-            throw Exception("Invalid unary expression on floating point literal");
+            throw ASTException(this, "Invalid unary expression on floating point literal");
         }
 
         return new NumericExpr(this, INTEGER, !value.integer);
@@ -417,20 +413,17 @@ namespace cc
     Constant* VariableExpr::get_constant(Context* ctx) const
     {
         // TODO Support extrapolating from 'const'
-        ctx->emit_error(this, "Constant expressions cannot have variables");
-        return nullptr;
+        throw ASTException(this, "Constant expressions cannot have variables");
     }
 
     Constant* AssignExpr::get_constant(Context* ctx) const
     {
-        ctx->emit_error(this, "Assign expressions are not Constant");
-        return nullptr;
+        throw ASTException(this, "Assign expressions are not Constant");
     }
 
     Constant* CallExpr::get_constant(Context* ctx) const
     {
-        ctx->emit_error(this, "Call expressions are not Constant");
-        return nullptr;
+        throw ASTException(this, "Call expressions are not Constant");
     }
 
     void LiteralExpr::write(void* buffer) const
@@ -444,7 +437,7 @@ namespace cc
         const Function* F = ctx->get_module()->get_function(function);
         if (!F)
         {
-            ctx->emit_error(this, "Undeclared function: " + function);
+            throw ASTException(this, "Undeclared function: " + function);
         }
 
         std::vector<const IR*> args_ir;
@@ -453,6 +446,7 @@ namespace cc
             args_ir.push_back(arg->value->get(ctx, IRB));
         }
 
+        F->check_arguments(this, args_ir);
         return IRB.add<CallInstr>(F, args_ir);
     }
 
@@ -463,8 +457,7 @@ namespace cc
         auto* ref = dynamic_cast<const Reference*>(sink_val);
         if (!ref)
         {
-            ctx->emit_error(sink, "Expression does not return a reference");
-            return nullptr;
+            throw ASTException(sink, "Expression does not return a reference");
         }
 
         IRB.add<MovInstr>(ref, out);
@@ -477,7 +470,7 @@ namespace cc
         auto* f = dynamic_cast<Function*>(symbol);
         assert(f);
 
-        f->set_entry_block(ctx->scope()->get_entry_block());
+        f->set_entry_block(ctx->scope()->new_block("entry"));
         IRB.set_insertion_point(f->get_entry_block());
 
         /* Declare the arguments */

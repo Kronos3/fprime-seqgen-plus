@@ -5,11 +5,25 @@ namespace cc
 {
     std::stringstream& p(std::stringstream &ss, const Reference* self)
     {
+        (void) self;
         return ss;
     }
 
     std::stringstream& p(std::stringstream &ss, const Constant* self)
     {
+        if (dynamic_cast<const LiteralExpr*>(self))
+        {
+            ss << "\"" << dynamic_cast<const LiteralExpr*>(self)->value << "\"";
+        }
+        else if (dynamic_cast<const NumericExpr*>(self))
+        {
+            ss << dynamic_cast<const NumericExpr*>(self)->as_string();
+        }
+        else
+        {
+
+        }
+
         return ss;
     }
 
@@ -84,12 +98,12 @@ namespace cc
     {
         for (const Scope* s_iter = self; s_iter; s_iter = s_iter->next())
         {
-            for (Block* b_iter = self->get_entry_block(); b_iter; b_iter = b_iter->next())
+            for (const auto& iter : s_iter->get_blocks())
             {
-                p(ss, b_iter);
-                if (b_iter->next())
+                p(ss, iter);
+                if (iter->next())
                 {
-                    ss << "goto " << b_iter->next()->get_name() << "\n\n";
+                    ss << "goto " << iter->next()->get_name() << "\n\n";
                 }
                 else
                 {

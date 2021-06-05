@@ -24,7 +24,11 @@
         static char error_string[1024];
         error_string[0] = 0;
 
-        sprintf(error_string, "Unexpected '%s'\nExpected one of: ", token_names[current_token]);
+        sprintf(error_string,
+                "Unexpected '%s' after '%s'\n"
+                "Expected one of: ",
+                token_names[last_token],
+                token_names[current_token]);
         for (int i = 0; i < expected_tokens_n; i++)
         {
             if (i > 0)
@@ -110,7 +114,7 @@
 %type<args> args
 %type<expr> expr expr_ expr_first
 %type<v_decl> v_decl
-%type<stmt> open_stmt closed_stmt simple_stmt decl_stmt bracket_stmt stmt
+%type<stmt> error_types open_stmt closed_stmt simple_stmt decl_stmt bracket_stmt stmt
 %type<multi_stmt> multi_stmt
 %type<loop> loop_header
 %type<if_clause> if_clause
@@ -184,8 +188,9 @@ type: TYPENAME                  { $$ = $1; }
     | struct_decl               { $$ = $1->get_type(); delete $1; }
     ;
 
-v_decl: type IDENTIFIER   { $$ = new TypeDecl($p2, $1, $2); }
-        ;
+v_decl: type IDENTIFIER         { $$ = new TypeDecl($p2, $1, $2); }
+      | IDENTIFIER IDENTIFIER   { $$ = new TypeDecl(cc_ctx, $p1, $1, $2); }
+      ;
 
 if_clause: IF '(' expr ')'      { $$ = new If($3); }
     ;
@@ -198,8 +203,8 @@ loop_header:
   ;
 
 multi_stmt:
-    stmt multi_stmt { if ($1) { $$ = new MultiStatement($1); $$->next = $2; } else { $$ = $2; } }
-  | stmt            { $$ = new MultiStatement($1); }
+    stmt multi_stmt     { if ($1) { $$ = new MultiStatement($1); $$->next = $2; } else { $$ = $2; } }
+  | stmt                { $$ = new MultiStatement($1); }
   ;
 
 bracket_stmt:
@@ -208,8 +213,8 @@ bracket_stmt:
     ;
 
 stmt:
-    open_stmt       { $$ = $1; }
-  | closed_stmt     { $$ = $1; }
+    open_stmt           { $$ = $1; }
+  | closed_stmt         { $$ = $1; }
   ;
 
 // The open/closed statement shenanigans is
@@ -309,7 +314,10 @@ expr_: expr_first            { $$ = $1; }
 // These tertiary expressions will evaluate/reduce last
 // The '=' is meant to take lowest precedence so that it
 // ends up at the highest point in the AST
-expr: expr_                  { $$ = $1; }
+expr: expr_                  {
+                                 try { $$ = new ConstantExpr($p1, $1->get_constant(cc_ctx)); }
+                                 catch (ASTException& exp) { $$ = $1; }
+                             }
     | expr '=' expr_         { $$ = new AssignExpr($1, $3); }
     ;
 

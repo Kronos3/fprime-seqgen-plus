@@ -126,6 +126,10 @@ namespace cc
         {
             print_unary_expr(ss, dynamic_cast<const UnaryExpr*>(self));
         }
+        else if (dynamic_cast<const ConstantExpr*>(self))
+        {
+            p(ss, dynamic_cast<const ConstantExpr*>(self)->constant);
+        }
         else
         {
             throw Exception("Invalid Expression");

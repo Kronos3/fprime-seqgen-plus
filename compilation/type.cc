@@ -1,4 +1,6 @@
 #include <map>
+#include <cc.h>
+
 #include "type.h"
 #include "context.h"
 
@@ -128,4 +130,14 @@ namespace cc
     StructDecl::StructDecl(const ASTPosition* position,
                            Context* ctx, std::string name, FieldDecl* fields) :
             ASTGlobal(position), name(std::move(name)), fields(fields), type(ctx->declare_structure(this)) {}
+
+    TypeDecl::TypeDecl(
+            Context* ctx,
+            const ASTPosition* position,
+            const char* type_ident, const char* name_) :
+            ASTValue(position), type(nullptr), variable(nullptr)
+    {
+        TAKE_STRING(name, name_);
+        ctx->emit_error(position, "Unresolved type '" + std::string(type_ident) + "'");
+    }
 }

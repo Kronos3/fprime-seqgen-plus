@@ -24,17 +24,24 @@ namespace cc
         std::string name;
 
     public:
-        explicit Block(Scope* scope)
+        explicit Block(Scope* scope, const std::string& name_ = "")
         : scope(scope), next_(nullptr)
         {
             uint32_t b_c = scope->block_count();
-            if (b_c)
+            if (name_.empty())
             {
-                name = variadic_string("%s.%d", scope->get_lineage().c_str(), b_c);
+                if (b_c)
+                {
+                    name = variadic_string("%s.%d", scope->get_lineage().c_str(), b_c);
+                }
+                else
+                {
+                    name = scope->get_lineage();
+                }
             }
             else
             {
-                name = scope->get_lineage();
+                name = scope->get_lineage() + "." + name_;
             }
         }
 
@@ -97,16 +104,16 @@ namespace cc
     };
 
     /****************************************************************************
-     *
+     *                                                                          *
      *                          Instruction definition                          *
-     *
+     *                                                                          *
      ****************************************************************************/
 
     struct BinaryInstr : public Instruction
     {
         const IR* a;
         const IR* b;
-        BinaryInstr(const IR* a, const IR* b) : a(b), b(b) {}
+        BinaryInstr(const IR* a, const IR* b) : a(a), b(b) {}
     };
 
     struct UnaryInstr : public Instruction

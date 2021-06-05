@@ -53,8 +53,8 @@ namespace cc
             constructor_block(nullptr), destructor_block(nullptr),
             ctx(context)
     {
-        constructor_block = global_scope->get_entry_block();
-        destructor_block = global_scope->new_block();
+        constructor_block = global_scope->new_block("constructor");
+        destructor_block = global_scope->new_block("destructor");
     }
 
     const Global* Module::get_symbol(const std::string& name) const
@@ -70,7 +70,7 @@ namespace cc
         return nullptr;
     }
 
-    bool Function::check_arguments(const CallExpr* call, const std::vector<IR*>& args) const
+    bool Function::check_arguments(const CallExpr* call, const std::vector<const IR*>& args) const
     {
         /* TODO implement IR type checking */
 

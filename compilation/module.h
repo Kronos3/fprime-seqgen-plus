@@ -63,7 +63,7 @@ namespace cc
             }
         }
 
-        bool check_arguments(const CallExpr* call, const std::vector<IR*>& args) const;
+        bool check_arguments(const CallExpr* call, const std::vector<const IR*>& args) const;
 
         Block* get_entry_block() const { return entry; }
         void set_entry_block(Block* block) { entry = block; }
@@ -91,7 +91,7 @@ namespace cc
         GlobalVariable* declare_variable(ASTGlobalVariable* variable);
         Function* declare_function(ASTFunction* variable);
         const Global* get_symbol(const std::string& name) const;
-        const Function* get_function(const std::string& name)
+        const Function* get_function(const std::string& name) const
         { return dynamic_cast<const Function*>(get_symbol(name)); }
 
         Scope* scope() const { return global_scope; }

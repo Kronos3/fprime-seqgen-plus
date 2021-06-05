@@ -21,8 +21,6 @@ namespace cc
     public:
         explicit Variable(TypeDecl* decl) : declaration(decl), value(nullptr) {}
 
-
-
         void set(const Reference* value_)
         {
             assert(!value && "Value already set");
@@ -91,9 +89,10 @@ namespace cc
         Scope* get_exit() const { return older_sibling ? older_sibling : parent; }
 
         std::string get_lineage() const;
-        Block* new_block();
-        Block* get_entry_block() const { return entry_block; }
+        Block* new_block(const std::string& name = "");
+        Block* get_entry_block() const { return blocks.at(0); }
         uint32_t block_count() const { return blocks.size(); }
+        const std::vector<Block*>& get_blocks() const { return blocks; }
         Scope* next() const { return younger_sibling; }
         Scope* child() const { return first_child; }
 
@@ -118,7 +117,6 @@ namespace cc
 
         Context* ctx;
         std::vector<Block*> blocks;
-        Block* entry_block;
 
         std::string scope_name;
     };

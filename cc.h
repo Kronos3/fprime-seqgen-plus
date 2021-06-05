@@ -28,14 +28,14 @@ namespace cc
         uint32_t col;
 
         explicit ASTPosition(const ASTPosition* position) : line(position->line), col(position->col) {}
-        ASTPosition(uint32_t line, uint32_t col) : line(line), col(col) {}
+        // ASTPosition(uint32_t line, uint32_t col) : line(line), col(col) {}
     };
 
 
     struct ASTValue : public Value, public ASTPosition
     {
         explicit ASTValue(const ASTPosition* position) : ASTPosition(position) {}
-        ASTValue(uint32_t line, uint32_t start_col) : ASTPosition(line, start_col) {}
+        // ASTValue(uint32_t line, uint32_t start_col) : ASTPosition(line, start_col) {}
 
         typedef void (*TraverseCB)(ASTValue*, Context* ctx, void*);
         virtual void traverse(TraverseCB cb, Context* ctx, void* data) { cb(this, ctx, data); };
@@ -62,6 +62,10 @@ namespace cc
         {
             TAKE_STRING(name, name_);
         }
+
+        TypeDecl(Context* ctx,
+                 const ASTPosition* position,
+                 const char* type_ident, const char* name_);
 
         void resolution_pass(Context* context) override;
     };
@@ -90,16 +94,16 @@ namespace cc
     struct Expression : public ASTValue
     {
         explicit Expression(const ASTValue* values) : ASTValue(values) {}
-        explicit Expression(const ASTValue::ASTPosition* position) : ASTValue(position) {}
+        explicit Expression(const ASTPosition* position) : ASTValue(position) {}
 
         virtual Constant* get_constant(Context* ctx) const = 0;
         virtual const IR* get(Context* ctx, IRBuilder &IRB) const = 0;
     };
-    
+
     struct Statement : public Buildable
     {
         explicit Statement(const ASTValue* values) : Buildable(values) {}
-        explicit Statement(const ASTValue::ASTPosition* position) : Buildable(position) {}
+        explicit Statement(const ASTPosition* position) : Buildable(position) {}
     };
     
     struct Loop : public Statement
@@ -226,13 +230,13 @@ namespace cc
 
     struct Continue : public Statement
     {
-        explicit Continue(const ASTValue::ASTPosition* position) : Statement(position) {}
+        explicit Continue(const ASTPosition* position) : Statement(position) {}
         void add(Context* ctx, IRBuilder &IRB) const override;
     };
 
     struct Break : public Statement
     {
-        explicit Break(const ASTValue::ASTPosition* position) : Statement(position) {}
+        explicit Break(const ASTPosition* position) : Statement(position) {}
         void add(Context* ctx, IRBuilder &IRB) const override;
     };
 
@@ -240,9 +244,9 @@ namespace cc
     {
         Expression* return_value;
 
-        explicit Return(const ASTValue::ASTPosition* position) :
+        explicit Return(const ASTPosition* position) :
             Statement(position), return_value(nullptr) {}
-        explicit Return(const ASTValue::ASTPosition* position, Expression* return_value) :
+        explicit Return(const ASTPosition* position, Expression* return_value) :
             Statement(position), return_value(return_value) {}
 
         void traverse(TraverseCB cb, Context* ctx, void* data) override;
@@ -319,11 +323,10 @@ namespace cc
         const IR* get(Context* ctx, IRBuilder &IRB) const override;
     };
 
-    struct ASTConstant : public Constant, public Expression
+    struct ASTConstant : public Expression, public Constant
     {
-        explicit ASTConstant(const ASTValue::ASTPosition* position) : Expression(position) {}
+        explicit ASTConstant(const ASTPosition* position) : Expression(position) {}
         const IR* get(Context* ctx, IRBuilder &IRB) const override;
-        virtual std::string get_name() const = 0;
     };
 
     struct NumericExpr : public ASTConstant
@@ -357,8 +360,11 @@ namespace cc
             *static_cast<int64_t*>(buffer) = value.integer;
         }
 
-        Constant* get_constant(Context* ctx) const override { return new NumericExpr(*this); }
-        std::string get_name() const override;
+        Constant* get_constant(Context* ctx) const override { return new NumericExpr(this, type, value.integer); }
+        std::string as_string() const override
+        {
+            return "Imm(" + ((type == FLOATING) ? std::to_string(value.floating) : std::to_string(value.integer)) + ")";
+        }
 
         ALL_OPERATORS_DECL
     };
@@ -371,11 +377,29 @@ namespace cc
             TAKE_STRING(value, value_);
         }
 
+        explicit LiteralExpr(const ASTPosition* position, std::string value) :
+                ASTConstant(position), value(std::move(value)) {}
+
         size_t get_size() const override { return value.length() + 1; }
         void write(void* buffer) const override;
-        std::string get_name() const override;
-        Constant* get_constant(Context* ctx) const override { return new LiteralExpr(*this); }
+        Constant* get_constant(Context* ctx) const override { return new LiteralExpr(this, value); }
         std::string as_string() const override { return variadic_string("%%%d=%s", get_id(), value.c_str()); }
+
+        ALL_OPERATORS_DECL
+    };
+
+    struct ConstantExpr : public ASTConstant
+    {
+        Constant* constant;
+        explicit ConstantExpr(const ASTPosition* position, Constant* constant) :
+                ASTConstant(position), constant(constant) {}
+
+        std::string get_name() const;
+
+        size_t get_size() const override { return constant->get_size(); }
+        void write(void* buffer) const override { constant->write(buffer); }
+        Constant* get_constant(Context* ctx) const override { return constant; }
+        std::string as_string() const override { return constant->as_string(); }
 
         ALL_OPERATORS_DECL
     };

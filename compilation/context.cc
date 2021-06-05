@@ -67,12 +67,11 @@ namespace cc
         first_child(nullptr), last_child(nullptr),
         scope_name(std::move(name)), younger_sibling(nullptr)
     {
-        entry_block = new_block();
     }
 
-    Block* Scope::new_block()
+    Block* Scope::new_block(const std::string& name)
     {
-        auto* b = new Block(this);
+        auto* b = new Block(this, name);
         blocks.push_back(b);
         return b;
     }
