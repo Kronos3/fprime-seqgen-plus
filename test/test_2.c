@@ -1,4 +1,5 @@
 void print(char* fmt);
+i32 i = 343351;
 
 void main()
 {
@@ -11,5 +12,5 @@ void main()
         print("");
     }
 
-    i8 i = 6 + 2 + 3;
+    i8* i = 6 + 2 + 7 * 3 + 5 + 2;
 }

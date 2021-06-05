@@ -383,7 +383,7 @@ namespace cc
         size_t get_size() const override { return value.length() + 1; }
         void write(void* buffer) const override;
         Constant* get_constant(Context* ctx) const override { return new LiteralExpr(this, value); }
-        std::string as_string() const override { return variadic_string("%%%d=%s", get_id(), value.c_str()); }
+        std::string as_string() const override { return "\"" + value + "\""; }
 
         ALL_OPERATORS_DECL
     };

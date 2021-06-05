@@ -154,7 +154,7 @@
 "}"                     { return '}'; }
 "\"(\\.|[^\"\\])*\""    { yyval->identifier = strndup(yytext + 1, len - 2); return LITERAL; }
 "[0-9]+\.[0-9]*"        { yyval->floating = strtod(yytext, NULL); return FLOATING; }
-"[0-9]"                 { yyval->integer = strtol(yytext, NULL, 0); return INTEGER; }
+"[0-9]+"                { yyval->integer = strtol(yytext, NULL, 0); return INTEGER; }
 "[A-Za-z_][A-Za-z_0-9]*" {
                             int keyword_i = handle_keyword(cc_ctx, yytext, yyval);
                             if (keyword_i >= 0) return keyword_i;
@@ -171,7 +171,7 @@ prog: global prog      { $$ = $1; $$->next = $2; }
 
 global:
     function                { $$ = $1; }
-    | decl_stmt             { $$ = new ASTGlobalVariable(dynamic_cast<Decl*>($1)); }
+    | decl_stmt ';'         { $$ = new ASTGlobalVariable(dynamic_cast<Decl*>($1)); }
     | struct_decl ';'       { $$ = $1; }
     ;
 

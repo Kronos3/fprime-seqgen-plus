@@ -11,19 +11,7 @@ namespace cc
 
     std::stringstream& p(std::stringstream &ss, const Constant* self)
     {
-        if (dynamic_cast<const LiteralExpr*>(self))
-        {
-            ss << "\"" << dynamic_cast<const LiteralExpr*>(self)->value << "\"";
-        }
-        else if (dynamic_cast<const NumericExpr*>(self))
-        {
-            ss << dynamic_cast<const NumericExpr*>(self)->as_string();
-        }
-        else
-        {
-
-        }
-
+        ss << self->as_string();
         return ss;
     }
 
