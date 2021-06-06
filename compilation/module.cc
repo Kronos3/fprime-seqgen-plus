@@ -5,7 +5,7 @@ namespace cc
 {
     GlobalVariable* Module::declare_variable(ASTGlobalVariable* variable)
     {
-        auto* gv = new GlobalVariable(variable);
+        auto* gv = new GlobalVariable(nullptr, variable);
         if (!declare_symbol(gv))
         {
             ctx->emit_error(variable, "Duplicate global symbol " + gv->get_name());

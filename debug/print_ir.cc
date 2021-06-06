@@ -3,19 +3,19 @@
 
 namespace cc
 {
-    std::stringstream& p(std::stringstream &ss, const Reference* self)
+    std::ostream& p(std::ostream &ss, const Reference* self)
     {
         (void) self;
         return ss;
     }
 
-    std::stringstream& p(std::stringstream &ss, const Constant* self)
+    std::ostream& p(std::ostream &ss, const Constant* self)
     {
         ss << self->as_string();
         return ss;
     }
 
-    std::stringstream& p(std::stringstream &ss, const Instruction* self)
+    std::ostream& p(std::ostream &ss, const Instruction* self)
     {
         ss << self->as_string() << " = " << self->get_name() << "[";
         if (dynamic_cast<const BinaryInstr*>(self))
@@ -32,7 +32,7 @@ namespace cc
         else if (dynamic_cast<const AllocaInstr*>(self))
         {
             const auto* self_ = dynamic_cast<const AllocaInstr*>(self);
-            ss << self_->type->as_string();
+            ss << self_->variable->get_decl()->type->as_string();
         }
         else if (dynamic_cast<const BranchInstr*>(self))
         {
@@ -65,12 +65,19 @@ namespace cc
                 }
             }
         }
+        else if (dynamic_cast<const ReturnInstr*>(self))
+        {
+            if (dynamic_cast<const ReturnInstr*>(self)->return_value)
+            {
+                ss << dynamic_cast<const ReturnInstr*>(self)->return_value->as_string();
+            }
+        }
 
         ss << "]";
         return ss;
     }
 
-    std::stringstream& p(std::stringstream& ss, const Block* self)
+    std::ostream& p(std::ostream& ss, const Block* self)
     {
         ss << self->get_name() << ":\n";
         for (auto iter : *self)
@@ -80,7 +87,7 @@ namespace cc
         return ss;
     }
 
-    std::stringstream& p(std::stringstream& ss, const Scope* self)
+    std::ostream& p(std::ostream& ss, const Scope* self)
     {
         for (const Scope* s_iter = self; s_iter; s_iter = s_iter->next())
         {

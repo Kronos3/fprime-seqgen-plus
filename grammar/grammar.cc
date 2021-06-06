@@ -44,5 +44,12 @@ int handle_keyword(Context* ctx, const char* text, void* yyval)
         return TYPENAME;
     }
 
+    QualType::qual_t q = QualType::get(ctx, text);
+    if (q != cc::QualType::NONE)
+    {
+        static_cast<NeoastUnion*>(yyval)->qualifier_prim = q;
+        return QUALIFIER;
+    }
+
     return -1;
 }

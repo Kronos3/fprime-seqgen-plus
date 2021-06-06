@@ -88,7 +88,7 @@ namespace cc
     void Decl::add(Context* ctx, IRBuilder &IRB) const
     {
         assert(decl->variable);
-        decl->variable->set(IRB.add<AllocaInstr>(decl->type));
+        decl->variable->set(IRB.add<AllocaInstr>(decl->variable));
     }
 
     void DeclInit::add(Context* ctx, IRBuilder &IRB) const
@@ -108,11 +108,12 @@ namespace cc
         Block* parent_block = IRB.get_insertion_point();
         Block* then_block = ctx->scope()->new_block("then");
         IRB.add<BranchInstr>(then_block, clause->get(ctx, IRB));
+        Block* curr_exit = ctx->scope()->get_exit();
 
         Block* post_block;
-        if (ctx->scope()->get_exit())
+        if (curr_exit)
         {
-            post_block = ctx->scope()->get_exit();
+            post_block = curr_exit;
         }
         else
         {
@@ -139,6 +140,7 @@ namespace cc
         IRB.set_insertion_point(then_block);
         then_stmt->add(ctx, IRB);
 
+        ctx->scope()->set_exit(curr_exit);
         IRB.set_insertion_point(post_block);
     }
 
@@ -168,7 +170,18 @@ namespace cc
 
     void Return::add(Context* ctx, IRBuilder &IRB) const
     {
-        IRB.add<ReturnInstr>();
+        ctx->get_function()->add_destructor_block(IRB.get_insertion_point());
+
+        if (not return_value)
+        {
+            if (ctx->get_function()->get_return_type() != ctx->type<Type::VOID>())
+            {
+                ctx->emit_error(this, "Non-void function requires a return expression");
+            }
+        }
+
+        // TODO(tumbar) Check output type
+        IRB.add<ReturnInstr>(return_value ? return_value->get(ctx, IRB) : nullptr);
     }
 
     const IR* BinaryExpr::get(Context* ctx, IRBuilder &IRB) const
@@ -189,6 +202,21 @@ namespace cc
             case L_EQ: return IRB.add<EQInstr>(a->get(ctx, IRB), b->get(ctx, IRB));
             case L_AND: return IRB.add<L_AndInstr>(a->get(ctx, IRB), b->get(ctx, IRB));
             case L_OR: return IRB.add<L_OrInstr>(a->get(ctx, IRB), b->get(ctx, IRB));
+            case S_LEFT: IRB.add<L_SLInstr>(a->get(ctx, IRB), b->get(ctx, IRB));
+            case S_RIGHT:
+            {
+                const IR* a_ir = a->get(ctx, IRB);
+                const IR* b_ir = b->get(ctx, IRB);
+                const auto* qual_type = dynamic_cast<const QualType*>(a_ir->get_type(ctx));
+                if (qual_type && qual_type->is_unsigned())
+                {
+                    return IRB.add<L_SRInstr>(a_ir, b_ir);
+                }
+                else
+                {
+                    return IRB.add<A_SRInstr>(a_ir, b_ir);
+                }
+            }
         }
 
         ctx->emit_error(a, "Invalid Binary expression: " + std::to_string(op));
@@ -279,6 +307,8 @@ namespace cc
             case L_EQ: return *c_a == &*c_b;
             case L_AND: return *c_a && &*c_b;
             case L_OR: return *c_a || &*c_b;
+            case S_LEFT: return *c_a << &*c_b;
+            case S_RIGHT: return *c_a >> &*c_b;
         }
 
         throw ASTException(this, "Invalid binary operator");
@@ -353,6 +383,8 @@ namespace cc
     BINARY_OPERATOR_IMPL_INT(NumericExpr, &)
     BINARY_OPERATOR_IMPL_INT(NumericExpr, |)
     BINARY_OPERATOR_IMPL_INT(NumericExpr, ^)
+    BINARY_OPERATOR_IMPL_INT(NumericExpr, <<)
+    BINARY_OPERATOR_IMPL_INT(NumericExpr, >>)
 
     BINARY_OPERATOR_ILLEGAL(LiteralExpr, +)
     BINARY_OPERATOR_ILLEGAL(LiteralExpr, -)
@@ -365,6 +397,8 @@ namespace cc
     BINARY_OPERATOR_ILLEGAL(LiteralExpr, &)
     BINARY_OPERATOR_ILLEGAL(LiteralExpr, |)
     BINARY_OPERATOR_ILLEGAL(LiteralExpr, ^)
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, <<)
+    BINARY_OPERATOR_ILLEGAL(LiteralExpr, >>)
     UNARY_OPERATOR_ILLEGAL(LiteralExpr, ~)
     BINARY_OPERATOR_CONST_RET(LiteralExpr, ==, {
         NumericExpr zero(this, NumericExpr::INTEGER, 0);
@@ -402,6 +436,8 @@ namespace cc
     BINARY_OPERATOR_CONST_RET(ConstantExpr, &, return *constant & c;)
     BINARY_OPERATOR_CONST_RET(ConstantExpr, |, return *constant | c;)
     BINARY_OPERATOR_CONST_RET(ConstantExpr, ^, return *constant ^ c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, <<, return *constant << c;)
+    BINARY_OPERATOR_CONST_RET(ConstantExpr, >>, return *constant >> c;)
     UNARY_OPERATOR_CONST_RET(ConstantExpr, ~, return ~*constant;)
     UNARY_OPERATOR_CONST_RET(ConstantExpr, !, return !*constant;)
 
@@ -485,17 +521,33 @@ namespace cc
         auto* f = dynamic_cast<Function*>(symbol);
         assert(f);
 
+        ctx->set_function(f);
         f->set_entry_block(ctx->scope()->new_block("entry"));
         IRB.set_insertion_point(f->get_entry_block());
 
         /* Declare the arguments */
         for (Arguments* iter = args; iter; iter = iter->next)
         {
-            iter->decl->variable->set(IRB.add<AllocaInstr>(iter->decl->type));
+            iter->decl->variable->set(IRB.add<AllocaInstr>(iter->decl->variable));
         }
 
         /* Add the function code */
         body->add(ctx, IRB);
+
+        Block* final_block = IRB.get_insertion_point();
+
+        if (f->get_destructor_blocks().find(final_block)
+            == f->get_destructor_blocks().end())
+        {
+            if (f->get_return_type() != ctx->type<Type::VOID>())
+            {
+                // Normal C would just warn here
+                // C++ errors here, I think it should be an error
+                ctx->emit_error(&end_position, "No return statement at the end of non-void function");
+            }
+
+            IRB.add<ReturnInstr>(nullptr);
+        }
 
         /* Clean up */
         IRB.set_insertion_point(nullptr);
@@ -528,5 +580,10 @@ namespace cc
             delete ir;
         }
         dangling.clear();
+    }
+
+    const Type* CallInstr::get_type(Context* ctx) const
+    {
+        return f->get_return_type();
     }
 }

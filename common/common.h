@@ -25,6 +25,8 @@ namespace cc
     virtual Constant* operator!=(const Constant* c) const = 0; \
     virtual Constant* operator&&(const Constant* c) const = 0; \
     virtual Constant* operator||(const Constant* c) const = 0; \
+    virtual Constant* operator<<(const Constant* c) const = 0; \
+    virtual Constant* operator>>(const Constant* c) const = 0; \
     virtual Constant* operator~() const = 0; \
     virtual Constant* operator!() const = 0;
 
@@ -44,8 +46,19 @@ namespace cc
     Constant* operator!=(const Constant* c) const override; \
     Constant* operator&&(const Constant* c) const override; \
     Constant* operator||(const Constant* c) const override; \
+    Constant* operator<<(const Constant* c) const override; \
+    Constant* operator>>(const Constant* c) const override; \
     Constant* operator~() const override; \
     Constant* operator!() const override;
+
+    class Context;
+    class Variable;
+    class IRBuilder;
+    class Type;
+    class StructType;
+    class Global;
+    class Function;
+    class GlobalVariable;
 
     struct Exception : public std::exception
     {
@@ -84,6 +97,7 @@ namespace cc
         virtual ~Value() = default;
     };
 
+    class Type;
     class IR : public Value
     {
         int value_id;
@@ -96,6 +110,9 @@ namespace cc
 
         int get_id() const { return value_id; }
         virtual std::string as_string() const { return variadic_string("%%%d", get_id()); }
+        virtual const Type* get_type(Context* ctx) const = 0;
+
+        static const Type* get_preferred_type(std::initializer_list<const IR*> irs);
     };
 
     struct Constant : public IR
@@ -109,6 +126,9 @@ namespace cc
 
     struct Reference : public IR
     {
+        Variable* variable;
+        const Type* get_type(Context* ctx) const override;
+        explicit Reference(Variable* variable) : IR(), variable(variable) {}
     };
 }
 

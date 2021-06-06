@@ -13,15 +13,6 @@
 
 namespace cc
 {
-    class Context;
-    class Variable;
-    class IRBuilder;
-    class Type;
-    class StructType;
-    class Global;
-    class Function;
-    class GlobalVariable;
-
     struct ASTPosition
     {
         uint32_t line;
@@ -251,6 +242,11 @@ namespace cc
 
         void traverse(TraverseCB cb, Context* ctx, void* data) override;
         void add(Context* ctx, IRBuilder &IRB) const override;
+
+        ~Return() override
+        {
+            delete return_value;
+        }
     };
 
     struct BinaryExpr : public Expression
@@ -267,7 +263,8 @@ namespace cc
             B_AND,
             B_OR,
             B_XOR,
-            // TODO Shift
+            S_LEFT,
+            S_RIGHT, //!< Distinguish between logical and arithmetic later
 
             // Logical comparison expressions
             L_LT,
@@ -293,6 +290,10 @@ namespace cc
             delete b;
         }
 
+        static Expression*
+        reduce(Context* ctx, Expression* a,
+               Expression* b, binary_operator_t op);
+
         void traverse(TraverseCB cb, Context* ctx, void* data) override;
         const IR* get(Context* ctx, IRBuilder &IRB) const override;
     };
@@ -314,6 +315,10 @@ namespace cc
         unary_operator_t op;
         UnaryExpr(Expression* operand, unary_operator_t op) :
                 Expression(operand), operand(operand), op(op) {}
+
+        static Expression*
+        reduce(Context* ctx, Expression* operand, unary_operator_t op);
+
         ~UnaryExpr() override
         {
             delete operand;
@@ -360,6 +365,7 @@ namespace cc
             *static_cast<int64_t*>(buffer) = value.integer;
         }
 
+        const Type* get_type(Context* ctx) const override;
         Constant* get_constant(Context* ctx) const override { return new NumericExpr(this, type, value.integer); }
         Constant* copy() const override { return new NumericExpr(*this); }
         std::string as_string() const override
@@ -383,6 +389,8 @@ namespace cc
 
         size_t get_size() const override { return value.length() + 1; }
         void write(void* buffer) const override;
+        const Type* get_type(Context* ctx) const override;
+
         Constant* copy() const override { return new LiteralExpr(*this); }
         Constant* get_constant(Context* ctx) const override { return new LiteralExpr(this, value); }
         std::string as_string() const override { return "\"" + value + "\""; }
@@ -400,6 +408,7 @@ namespace cc
 
         size_t get_size() const override { return constant->get_size(); }
         void write(void* buffer) const override { constant->write(buffer); }
+        const Type* get_type(Context* ctx) const override { return constant->get_type(ctx); }
         Constant* copy() const override { return new ConstantExpr(*this); }
         Constant* get_constant(Context* ctx) const override { return constant->copy(); }
         std::string as_string() const override { return constant->as_string(); }
@@ -519,8 +528,12 @@ namespace cc
         const Type* return_type;
         Arguments* args;
 
-        ASTFunction(const ASTPosition* position, const Type* return_type, const char* name_, Arguments* args)
-                : ASTGlobal(position), return_type(return_type), args(args)
+        ASTFunction(const ASTPosition* position,
+                    const Type* return_type,
+                    const char* name_,
+                    Arguments* args)
+                : ASTGlobal(position), return_type(return_type),
+                args(args)
         {
             TAKE_STRING(name, name_);
         }
@@ -537,10 +550,14 @@ namespace cc
 
     struct ASTFunctionDefine : public ASTFunction
     {
+        ASTPosition end_position;
         MultiStatement* body;
-        ASTFunctionDefine(const ASTPosition* position, const Type* return_type, const char* name_,
+        ASTFunctionDefine(const ASTPosition* position,
+                          ASTPosition end_position,
+                          const Type* return_type, const char* name_,
                           Arguments* args, MultiStatement* body)
-                : ASTFunction(position, return_type, name_, args), body(body) {}
+                : ASTFunction(position, return_type, name_, args),
+                  body(body), end_position(end_position) {}
 
         void add(Context* ctx, IRBuilder &IRB) const override;
 

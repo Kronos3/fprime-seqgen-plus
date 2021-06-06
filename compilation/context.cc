@@ -147,7 +147,6 @@ namespace cc
 
     void Scope::set_exit(Block* block)
     {
-        assert(!exit && "Loop exit already set");
         exit = block;
     }
 
@@ -211,6 +210,12 @@ namespace cc
             delete iter.second;
         }
         complex_types.clear();
+
+        for (auto* iter : extra_types)
+        {
+            delete iter;
+        }
+        extra_types.clear();
     }
 
     Context::Context() :

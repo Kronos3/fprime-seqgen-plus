@@ -121,7 +121,11 @@ namespace cc
 
     void Return::traverse(ASTValue::TraverseCB cb, Context* ctx, void* data)
     {
-        return_value->traverse(cb, ctx, data);
+        if (return_value)
+        {
+            return_value->traverse(cb, ctx, data);
+        }
+
         ASTValue::traverse(cb, ctx, data);
     }
 
@@ -142,6 +146,53 @@ namespace cc
     {
         decl->traverse(cb, ctx, data);
         ASTGlobal::traverse(cb, ctx, data);
+    }
+
+    Expression* BinaryExpr::reduce(
+            Context* ctx,
+            Expression* a, Expression* b,
+            BinaryExpr::binary_operator_t op)
+    {
+        auto* out = new BinaryExpr(a, b, op);
+        if (dynamic_cast<ASTConstant*>(a)
+            && dynamic_cast<ASTConstant*>(b))
+        {
+            auto* c = out->get_constant(ctx);
+            auto* c_e = dynamic_cast<ASTConstant*>(c);
+            if (not c_e)
+            {
+                delete c;
+            }
+            else
+            {
+                delete out;
+                return c_e;
+            }
+        }
+
+        return out;
+    }
+
+    Expression* UnaryExpr::reduce(
+            Context* ctx, Expression* operand, unary_operator_t op)
+    {
+        auto* out = new UnaryExpr(operand, op);
+        if (dynamic_cast<ASTConstant*>(operand))
+        {
+            auto* c = out->get_constant(ctx);
+            auto* c_e = dynamic_cast<ASTConstant*>(c);
+            if (not c_e)
+            {
+                delete c;
+            }
+            else
+            {
+                delete out;
+                return c_e;
+            }
+        }
+
+        return out;
     }
 
     /************************************************************************

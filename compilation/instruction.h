@@ -32,7 +32,7 @@ namespace cc
             {
                 if (b_c)
                 {
-                    name = variadic_string("%s.%d", scope->get_lineage().c_str(), b_c);
+                    name = scope->get_lineage() + "." + std::to_string(b_c);
                 }
                 else
                 {
@@ -41,7 +41,7 @@ namespace cc
             }
             else
             {
-                name = scope->get_lineage() + "." + name_;
+                name = scope->get_lineage() + "." + name_ + "." + std::to_string(b_c);
             }
         }
 
@@ -117,12 +117,15 @@ namespace cc
     {
         const IR* a;
         const IR* b;
+
+        const Type* get_type(Context* ctx) const override { return get_preferred_type({a, b}); }
         BinaryInstr(const IR* a, const IR* b) : a(a), b(b) {}
     };
 
     struct UnaryInstr : public Instruction
     {
         const IR* v;
+        const Type* get_type(Context* ctx) const override { return v->get_type(ctx); }
         explicit UnaryInstr(const IR* v) : v(v) {}
     };
 
@@ -164,6 +167,9 @@ namespace cc
     BINARY_INSTR(B_And);
     BINARY_INSTR(B_Or);
     BINARY_INSTR(B_Xor);
+    BINARY_INSTR(L_SL);
+    BINARY_INSTR(L_SR);
+    BINARY_INSTR(A_SR);
 
     /** Jumping and Branching **/
     struct JumpInstr : public Instruction
@@ -176,6 +182,7 @@ namespace cc
 
         explicit JumpInstr(Block* target) : target(target) {}
         std::string get_name() const override { return "JumpInstr"; }
+        const Type* get_type(Context* ctx) const override { return ctx->type<Type::VOID>(); }
     };
 
     struct BranchInstr : public JumpInstr
@@ -193,11 +200,11 @@ namespace cc
 
     /** Misc **/
 
-    struct AllocaInstr : public Instruction, public Reference
+    struct AllocaInstr : public Reference, public Instruction
     {
-        const Type* type;
-        explicit AllocaInstr(const Type* type) : type(type) {}
+        explicit AllocaInstr(Variable* variable) : Reference(variable) {}
         std::string get_name() const override { return "AllocaInstr"; }
+        const Type* get_type(Context* ctx) const override { return Reference::get_type(ctx); }
     };
 
     struct MovInstr : public Instruction
@@ -205,13 +212,18 @@ namespace cc
         const Reference* dest;
         const IR* src;
 
-        explicit MovInstr(const Reference* dest, const IR* src) : dest(dest), src(src) {}
+        MovInstr(const Reference* dest, const IR* src) : dest(dest), src(src) {}
         std::string get_name() const override { return "MovInstr"; }
+        const Type* get_type(Context* ctx) const override { return dest->get_type(ctx); };
     };
 
     struct ReturnInstr : public Instruction
     {
+        const IR* return_value;
+        ReturnInstr(const IR* return_value) : return_value(return_value) {}
+
         std::string get_name() const override { return "ReturnInstr"; }
+        const Type* get_type(Context* ctx) const override { return ctx->type<Type::VOID>(); }
     };
 
     struct CallInstr : public Instruction
@@ -220,6 +232,7 @@ namespace cc
         std::vector<const IR*> arguments;
         CallInstr(const Function* F, std::vector<const IR*> arguments) : f(F), arguments(std::move(arguments)) {}
         std::string get_name() const override { return "CallInstr"; }
+        const Type* get_type(Context* ctx) const override;
     };
 }
 

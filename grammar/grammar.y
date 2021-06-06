@@ -1,4 +1,6 @@
 %top {
+    #include <iostream>
+    #include <debug/print_debug.h>
     #include "cc.h"
     #include "compilation/context.h"
     #include "grammar/grammar.h"
@@ -27,8 +29,8 @@
         sprintf(error_string,
                 "Unexpected '%s' after '%s'\n"
                 "Expected one of: ",
-                token_names[last_token],
-                token_names[current_token]);
+                token_names[current_token],
+                token_names[last_token]);
         for (int i = 0; i < expected_tokens_n; i++)
         {
             if (i > 0)
@@ -61,6 +63,8 @@
     Arguments* f_args;
     CallArguments* args;
     TypeDecl* v_decl;
+    int qualifier_prim;
+    QualType* qual_type;
     const Type* type;
     Statement* stmt;
     MultiStatement* multi_stmt;
@@ -92,27 +96,34 @@
 // Keywords
 %token IF ELSE FOR WHILE CONTINUE BREAK RETURN STRUCT
 
+// Qualifiers
+%token<qualifier_prim> QUALIFIER
+
 // Operators
 %token EQ NE GT GE LT LE L_AND L_OR INC DEC
+%token '.' PTR
 
 // ASCII
 %token '(' ')' '+' '-' '*' '/' '{' '}' '!' ',' ';' '=' '&' '|' '^' '~'
 %token<type> TYPENAME
+%token SR SL
 
 %left '+' '-'
 %right '*' '/' '='
 %left ',' '^' '|' '&' L_AND L_OR
 %left LE LT GT GE EQ '('
 %left IDENTIFIER
-%right INC DEC
+%right QUALIFIER
+%right INC DEC SR SL
 
 %type<function> function
 %type<f_args> f_args
 %type<type> type
+%type<qualifier_prim> qual
 %type<fields> fields_decl
 %type<structure> struct_decl
 %type<args> args
-%type<expr> expr expr_ expr_first
+%type<expr> expr expr_ expr_first expr_primary
 %type<v_decl> v_decl
 %type<stmt> error_types open_stmt closed_stmt simple_stmt decl_stmt bracket_stmt stmt
 %type<multi_stmt> multi_stmt
@@ -125,16 +136,19 @@
 
 "[\n]"                  { position->line++; }
 "[ \t\r\\]+"            { /* skip */ }
+"//[^\n]*"              { /* skip */ }
 "=="                    { return EQ; }
 "!="                    { return NE; }
 ">="                    { return GE; }
 "<="                    { return LE; }
 "\&\&"                  { return L_AND; }
 "\|\|"                  { return L_OR; }
+"<<"                    { return SL; }
+">>"                    { return SR; }
 ">"                     { return GT; }
 "<"                     { return LT; }
-//"\."                    { return '.'; }
-//"->"                    { return PTR; }
+"\."                    { return '.'; }
+"->"                    { return PTR; }
 "!"                     { return '!'; }
 ";"                     { return ';'; }
 ","                     { return ','; }
@@ -183,7 +197,12 @@ struct_decl: STRUCT '{' fields_decl '}'             { $$ = new StructDecl($p1, c
            | STRUCT IDENTIFIER '{' fields_decl '}'  { $$ = new StructDecl($p1, cc_ctx, $2, $4); }
            ;
 
+qual: QUALIFIER                 { $$ = $1; }
+    | QUALIFIER qual            { $$ = $1 | $2; }
+    ;
+
 type: TYPENAME                  { $$ = $1; }
+    | qual type                 { $$ = new QualType(cc_ctx, $1, $2); }
     | type '*'                  { $$ = $1->get_pointer_to(); }
     | struct_decl               { $$ = $1->get_type(); delete $1; }
     ;
@@ -258,8 +277,8 @@ f_args:
 
 // Function declarations
 function:
-      type IDENTIFIER '(' f_args ')' '{' multi_stmt '}' { $$ = new ASTFunctionDefine($p1, $1, $2, $4, $7); }
-    | type IDENTIFIER '(' ')' '{' multi_stmt '}'        { $$ = new ASTFunctionDefine($p1, $1, $2, nullptr, $6); }
+      type IDENTIFIER '(' f_args ')' '{' multi_stmt '}' { $$ = new ASTFunctionDefine($p1, *$p8, $1, $2, $4, $7); }
+    | type IDENTIFIER '(' ')' '{' multi_stmt '}'        { $$ = new ASTFunctionDefine($p1, *$p7, $1, $2, nullptr, $6); }
     | type IDENTIFIER '(' f_args ')' ';'                { $$ = new ASTFunction($p1, $1, $2, $4); }
     | type IDENTIFIER '(' ')' ';'                       { $$ = new ASTFunction($p1, $1, $2, nullptr); }
     ;
@@ -274,41 +293,49 @@ args:
 // These expressions allow us to create an order of
 // operations as needed. These are reduced before the
 // main expressions are reduced
+
+expr_primary:
+      '(' expr ')'                  { $$ = $2; }
+    | IDENTIFIER '(' args ')'       { $$ = new CallExpr($p1, $1, $3); }   // Function call (no pointer/indirect calls)
+    | IDENTIFIER '(' ')'            { $$ = new CallExpr($p1, $1, nullptr); }   // Function call (no pointer/indirect calls)
+    | expr_primary '.' IDENTIFIER   { $$ = nullptr; }
+    | expr_primary PTR IDENTIFIER   { $$ = nullptr; }
+    ;
+
 expr_first:
-        INTEGER                 { $$ = new NumericExpr($p1, NumericExpr::INTEGER, $1); }
-      | FLOATING                { $$ = new NumericExpr($p1, NumericExpr::FLOATING, $1); }
-      | LITERAL                 { $$ = new LiteralExpr($p1, $1); }
-      | IDENTIFIER              { $$ = new VariableExpr($p1, $1); }
-      | expr_ '/' expr_         { $$ = new BinaryExpr($1, $3, BinaryExpr::A_DIV); }
-      | expr_ '*' expr_         { $$ = new BinaryExpr($1, $3, BinaryExpr::A_MUL); }
-      //| expr_ '.' IDENTIFIER    { $$ = new DotExpr($1, $p2, $3); }
-      //| expr_ PTR IDENTIFIER    { $$ = new PtrExpr($1, $p2, $3); }
-      | '(' expr ')'            { $$ = $2; }
-      | IDENTIFIER '(' args ')' { $$ = new CallExpr($p1, $1, $3); }   // Function call (no pointer/indirect calls)
-      | IDENTIFIER '(' ')'      { $$ = new CallExpr($p1, $1, nullptr); }   // Function call (no pointer/indirect calls)
-      ;
+      IDENTIFIER            { $$ = new VariableExpr($p1, $1); }
+    | INTEGER               { $$ = new NumericExpr($p1, NumericExpr::INTEGER, $1); }
+    | FLOATING              { $$ = new NumericExpr($p1, NumericExpr::FLOATING, $1); }
+    | LITERAL               { $$ = new LiteralExpr($p1, $1); }
+    | expr_ '/' expr_       { $$ = new BinaryExpr($1, $3, BinaryExpr::A_DIV); }
+    | expr_ '*' expr_       { $$ = new BinaryExpr($1, $3, BinaryExpr::A_MUL); }
+    ;
 
 // These secondary expressions take lower precedence than the
 // expr_first expressions
-expr_: expr_first            { $$ = $1; }
-    | expr_ LT expr_         { $$ = new BinaryExpr($1, $3, BinaryExpr::L_LT); }
-    | expr_ GT expr_         { $$ = new BinaryExpr($1, $3, BinaryExpr::L_GT); }
-    | expr_ LE expr_         { $$ = new BinaryExpr($1, $3, BinaryExpr::L_LE); }
-    | expr_ GE expr_         { $$ = new BinaryExpr($1, $3, BinaryExpr::L_GE); }
-    | expr_ EQ expr_         { $$ = new BinaryExpr($1, $3, BinaryExpr::L_EQ); }
-    | expr_ '+' expr_        { $$ = new BinaryExpr($1, $3, BinaryExpr::A_ADD); }
-    | expr_ '-' expr_        { $$ = new BinaryExpr($1, $3, BinaryExpr::A_SUB); }
-    | expr_ '&' expr_        { $$ = new BinaryExpr($1, $3, BinaryExpr::B_AND); }
-    | expr_ '|' expr_        { $$ = new BinaryExpr($1, $3, BinaryExpr::B_OR); }
-    | expr_ '^' expr_        { $$ = new BinaryExpr($1, $3, BinaryExpr::B_XOR); }
-    | '~' expr_              { $$ = new UnaryExpr($2, UnaryExpr::B_NOT); }
-    | '!' expr_              { $$ = new UnaryExpr($2, UnaryExpr::L_NOT); }
-    | INC expr_              { $$ = new UnaryExpr($2, UnaryExpr::INC_PRE); }
-    | DEC expr_              { $$ = new UnaryExpr($2, UnaryExpr::DEC_PRE); }
-    | expr_ INC              { $$ = new UnaryExpr($1, UnaryExpr::INC_POST); }
-    | expr_ DEC              { $$ = new UnaryExpr($1, UnaryExpr::DEC_POST); }
-    | expr_ L_AND expr_      { $$ = new BinaryExpr($1, $3, BinaryExpr::L_AND); }
-    | expr_ L_OR expr_       { $$ = new BinaryExpr($1, $3, BinaryExpr::B_OR); }
+expr_:
+      expr_primary           { $$ = $1; }
+    | expr_first             { $$ = $1; }
+    | expr_ LT expr_         { $$ = BinaryExpr::reduce(cc_ctx, $1, $3, BinaryExpr::L_LT); }
+    | expr_ GT expr_         { $$ = BinaryExpr::reduce(cc_ctx, $1, $3, BinaryExpr::L_GT); }
+    | expr_ LE expr_         { $$ = BinaryExpr::reduce(cc_ctx, $1, $3, BinaryExpr::L_LE); }
+    | expr_ GE expr_         { $$ = BinaryExpr::reduce(cc_ctx, $1, $3, BinaryExpr::L_GE); }
+    | expr_ EQ expr_         { $$ = BinaryExpr::reduce(cc_ctx, $1, $3, BinaryExpr::L_EQ); }
+    | expr_ '+' expr_        { $$ = BinaryExpr::reduce(cc_ctx, $1, $3, BinaryExpr::A_ADD); }
+    | expr_ '-' expr_        { $$ = BinaryExpr::reduce(cc_ctx, $1, $3, BinaryExpr::A_SUB); }
+    | expr_ '&' expr_        { $$ = BinaryExpr::reduce(cc_ctx, $1, $3, BinaryExpr::B_AND); }
+    | expr_ '|' expr_        { $$ = BinaryExpr::reduce(cc_ctx, $1, $3, BinaryExpr::B_OR); }
+    | expr_ '^' expr_        { $$ = BinaryExpr::reduce(cc_ctx, $1, $3, BinaryExpr::B_XOR); }
+    | '~' expr_              { $$ = UnaryExpr::reduce(cc_ctx, $2, UnaryExpr::B_NOT); }
+    | '!' expr_              { $$ = UnaryExpr::reduce(cc_ctx, $2, UnaryExpr::L_NOT); }
+    | INC expr_              { $$ = UnaryExpr::reduce(cc_ctx, $2, UnaryExpr::INC_PRE); }
+    | DEC expr_              { $$ = UnaryExpr::reduce(cc_ctx, $2, UnaryExpr::DEC_PRE); }
+    | expr_ INC              { $$ = UnaryExpr::reduce(cc_ctx, $1, UnaryExpr::INC_POST); }
+    | expr_ DEC              { $$ = UnaryExpr::reduce(cc_ctx, $1, UnaryExpr::DEC_POST); }
+    | expr_ L_AND expr_      { $$ = BinaryExpr::reduce(cc_ctx, $1, $3, BinaryExpr::L_AND); }
+    | expr_ L_OR expr_       { $$ = BinaryExpr::reduce(cc_ctx, $1, $3, BinaryExpr::B_OR); }
+    | expr_ SR expr_         { $$ = BinaryExpr::reduce(cc_ctx, $1, $3, BinaryExpr::S_RIGHT); }
+    | expr_ SL expr_         { $$ = BinaryExpr::reduce(cc_ctx, $1, $3, BinaryExpr::S_LEFT); }
     ;
 
 // These tertiary expressions will evaluate/reduce last

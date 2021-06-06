@@ -39,6 +39,17 @@ namespace cc
         return ctx->type(name);
     }
 
+    QualType::qual_t QualType::get(Context* ctx, const std::string &name)
+    {
+        (void) ctx;
+
+        if (name == "const") return QualType::qual_t::CONST;
+        else if (name == "volatile") return QualType::qual_t::VOLATILE;
+        else if (name == "unsigned") return QualType::qual_t::UNSIGNED;
+
+        return NONE;
+    }
+
     std::string Type::as_string() const
     {
         switch (basic_type)
@@ -139,5 +150,51 @@ namespace cc
     {
         TAKE_STRING(name, name_);
         ctx->emit_error(position, "Unresolved type '" + std::string(type_ident) + "'");
+    }
+
+    QualType::QualType(Context* ctx, int starting, const Type* type)
+            : Type(*type), qualifiers(starting)
+    {
+        ctx->register_type(this);
+    }
+
+    const Type* NumericExpr::get_type(Context* ctx) const
+    {
+        switch(type)
+        {
+            case INTEGER:
+            {
+                if (value.integer > INT32_MAX || value.integer < INT32_MIN)
+                {
+                    return ctx->type<Type::I64>();
+                }
+                else
+                {
+                    return ctx->type<Type::I32>();
+                }
+            }
+            case FLOATING:
+            {
+                // Check if this value fits in float before
+                // promoting to double
+                auto f = static_cast<float>(value.floating);
+
+                if (f == value.floating)
+                {
+                    return ctx->type<Type::F32>();
+                }
+                else
+                {
+                    return ctx->type<Type::F64>();
+                }
+            }
+        }
+
+        throw Exception("Invalid NumericExpr");
+    }
+
+    const Type* LiteralExpr::get_type(Context* ctx) const
+    {
+        return nullptr;
     }
 }

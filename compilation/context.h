@@ -27,10 +27,15 @@ namespace cc
             value = value_;
         }
 
-        const Reference* get()
+        const Reference* get() const
         {
             assert(value && "Variable not set() yet");
             return value;
+        }
+
+        const TypeDecl* get_decl() const
+        {
+            return declaration;
         }
     };
 
@@ -134,6 +139,7 @@ namespace cc
     class Context
     {
         Module* module;
+        Function* function;
         Scope* head;
         Scope* tail;
         bool build_scope;
@@ -144,9 +150,11 @@ namespace cc
         std::unordered_map<std::string, Type*> complex_types;
 
         Type* primitives[Type::P_N]{nullptr};
+        std::vector<Type*> extra_types;
     public:
         Context();
 
+        void register_type(Type* type) { extra_types.push_back(type); }
         Variable* get_variable(const std::string& name) const;
         Variable* declare_variable(TypeDecl* decl);
         const Type* declare_structure(StructDecl* structure);
@@ -154,6 +162,8 @@ namespace cc
         Scope* scope() { return tail; }
 
         Module* get_module() { return module; }
+        void set_function(Function* f) { function = f; }
+        Function* get_function() { return function; }
 
         void enter_scope(Scope::scope_t type, const std::string &name = "");
         void exit_scope();

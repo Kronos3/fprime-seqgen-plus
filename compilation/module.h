@@ -3,6 +3,7 @@
 
 #include <cc.h>
 #include <map>
+#include <set>
 #include "context.h"
 
 namespace cc
@@ -26,11 +27,13 @@ namespace cc
     class GlobalVariable : public Global, public Reference
     {
     public:
-        explicit GlobalVariable(ASTGlobalVariable* ast) :
-        Global(ast->decl->name, ast->decl->type, ast->decl->type->get_ctx()) {}
+        explicit GlobalVariable(Variable* variable, ASTGlobalVariable* ast) :
+                Reference(variable), Global(ast->decl->name, ast->decl->type, ast->decl->type->get_ctx())
+        {}
 
-        GlobalVariable(const std::string& name, const Type* type)
-        : Global(name, type, type->get_ctx()) {}
+        GlobalVariable(Variable* variable, const std::string &name, const Type* type)
+        : Reference(variable), Global(name, type, type->get_ctx())
+        {}
     };
 
     class ConstantGlobal : public GlobalVariable
@@ -38,7 +41,7 @@ namespace cc
         const Constant* value;
     public:
         ConstantGlobal(Context* ctx, const std::string& name, const ASTConstant* ast) :
-                GlobalVariable(name, ctx->type<Type::PTR>()), value(ast) {}
+                GlobalVariable(nullptr, name, ctx->type<Type::PTR>()), value(ast) {}
     };
 
     class Function : public Global
@@ -49,6 +52,7 @@ namespace cc
 
         const Type* return_type;
         std::vector<const Type*> signature;
+        std::set<Block*> destructor_blocks;
         Block* entry;
         const ASTFunction* ast;
 
@@ -66,6 +70,8 @@ namespace cc
         bool check_arguments(const CallExpr* call, const std::vector<const IR*>& args) const;
 
         Block* get_entry_block() const { return entry; }
+        void add_destructor_block(Block* block) { destructor_blocks.insert(block); }
+        const std::set<Block*>& get_destructor_blocks() const { return destructor_blocks; }
         void set_entry_block(Block* block) { entry = block; }
         const std::vector<const Type*>& get_signature() const { return signature; };
         const Type* get_return_type() const { return return_type; }
