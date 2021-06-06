@@ -17,8 +17,8 @@ namespace cc
             case I32:
             case F32: return 4;
             case I64:
-            case F64: return 8;
-            case PTR: return ctx->get_ptr_size();
+            case F64:
+            case PTR: return 8;  /* AHHHHHHHH */
             case ENUM: return 4;
             default:
                 throw Exception("Invalid type passed to Type::get_size()");

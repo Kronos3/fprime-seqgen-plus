@@ -361,6 +361,7 @@ namespace cc
         }
 
         Constant* get_constant(Context* ctx) const override { return new NumericExpr(this, type, value.integer); }
+        Constant* copy() const override { return new NumericExpr(*this); }
         std::string as_string() const override
         {
             return "Imm(" + ((type == FLOATING) ? std::to_string(value.floating) : std::to_string(value.integer)) + ")";
@@ -382,6 +383,7 @@ namespace cc
 
         size_t get_size() const override { return value.length() + 1; }
         void write(void* buffer) const override;
+        Constant* copy() const override { return new LiteralExpr(*this); }
         Constant* get_constant(Context* ctx) const override { return new LiteralExpr(this, value); }
         std::string as_string() const override { return "\"" + value + "\""; }
 
@@ -398,10 +400,16 @@ namespace cc
 
         size_t get_size() const override { return constant->get_size(); }
         void write(void* buffer) const override { constant->write(buffer); }
-        Constant* get_constant(Context* ctx) const override { return constant; }
+        Constant* copy() const override { return new ConstantExpr(*this); }
+        Constant* get_constant(Context* ctx) const override { return constant->copy(); }
         std::string as_string() const override { return constant->as_string(); }
 
         ALL_OPERATORS_DECL
+
+        ~ConstantExpr() override
+        {
+            delete constant;
+        }
     };
 
     struct VariableExpr : public Expression
@@ -548,11 +556,10 @@ namespace cc
     {
         TypeDecl* decl;
         Constant* initializer;
-        Variable* variable;
 
         explicit ASTGlobalVariable(Decl* decl_stmt) :
         ASTGlobal(decl_stmt->decl), decl(decl_stmt->decl),
-        variable(nullptr), initializer(nullptr)
+        initializer(nullptr), decl_stmt(decl_stmt)
         {
             if (dynamic_cast<DeclInit*>(decl_stmt))
             {
@@ -564,6 +571,15 @@ namespace cc
         void add(Context* ctx, IRBuilder &IRB) const override;
 
         void resolution_pass(Context* context) override;
+
+        ~ASTGlobalVariable() override
+        {
+            delete decl_stmt;
+            delete initializer;
+        }
+
+    private:
+        Decl* decl_stmt;
     };
 
     struct StructDecl : public ASTGlobal

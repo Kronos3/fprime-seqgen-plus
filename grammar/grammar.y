@@ -315,7 +315,11 @@ expr_: expr_first            { $$ = $1; }
 // The '=' is meant to take lowest precedence so that it
 // ends up at the highest point in the AST
 expr: expr_                  {
-                                 try { $$ = new ConstantExpr($p1, $1->get_constant(cc_ctx)); }
+                                 try
+                                 {
+                                     $$ = new ConstantExpr($p1, $1->get_constant(cc_ctx));
+                                     delete $1;
+                                 }
                                  catch (ASTException& exp) { $$ = $1; }
                              }
     | expr '=' expr_         { $$ = new AssignExpr($1, $3); }

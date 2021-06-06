@@ -87,6 +87,7 @@ namespace cc
 
     void Decl::add(Context* ctx, IRBuilder &IRB) const
     {
+        assert(decl->variable);
         decl->variable->set(IRB.add<AllocaInstr>(decl->type));
     }
 
@@ -104,20 +105,35 @@ namespace cc
 
     void If::add(Context* ctx, IRBuilder &IRB) const
     {
+        Block* parent_block = IRB.get_insertion_point();
         Block* then_block = ctx->scope()->new_block("then");
         IRB.add<BranchInstr>(then_block, clause->get(ctx, IRB));
 
-        Block* post_block = ctx->scope()->new_block();
+        Block* post_block;
+        if (ctx->scope()->get_exit())
+        {
+            post_block = ctx->scope()->get_exit();
+        }
+        else
+        {
+            post_block = ctx->scope()->new_block();
+            ctx->scope()->set_exit(post_block);
+        }
+
         then_block->chain(post_block);
 
         if (else_stmt)
         {
             Block* else_block = ctx->scope()->new_block("else");
             else_block->chain(post_block);
-            IRB.add<JumpInstr>(else_block, true);
+            parent_block->chain(else_block, true);
 
             IRB.set_insertion_point(else_block);
             else_stmt->add(ctx, IRB);
+        }
+        else
+        {
+            parent_block->chain(post_block, true);
         }
 
         IRB.set_insertion_point(then_block);
@@ -212,8 +228,7 @@ namespace cc
 
     std::string ConstantExpr::get_name() const
     {
-        static int i = 0;
-        return variadic_string("imm.%d", i++);
+        return variadic_string("imm.%p", this);
     }
 
     const IR* VariableExpr::get(Context* ctx, IRBuilder &IRB) const
@@ -223,7 +238,7 @@ namespace cc
 
     Constant* UnaryExpr::get_constant(Context* ctx) const
     {
-        std::unique_ptr<Constant> eval(operand->get_constant(ctx));
+        std::shared_ptr<Constant> eval(operand->get_constant(ctx));
         if (!eval)
         {
             return nullptr;
@@ -240,8 +255,8 @@ namespace cc
 
     Constant* BinaryExpr::get_constant(Context* ctx) const
     {
-        std::unique_ptr<Constant> c_a(a->get_constant(ctx));
-        std::unique_ptr<Constant> c_b(b->get_constant(ctx));
+        std::shared_ptr<Constant> c_a(a->get_constant(ctx));
+        std::shared_ptr<Constant> c_b(b->get_constant(ctx));
 
         if (!c_a || !c_b)
         {

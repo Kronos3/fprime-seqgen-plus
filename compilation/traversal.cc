@@ -141,7 +141,7 @@ namespace cc
     void ASTGlobalVariable::traverse(ASTValue::TraverseCB cb, Context* ctx, void* data)
     {
         decl->traverse(cb, ctx, data);
-        ASTValue::traverse(cb, ctx, data);
+        ASTGlobal::traverse(cb, ctx, data);
     }
 
     /************************************************************************
@@ -162,6 +162,10 @@ namespace cc
     void TypeDecl::resolution_pass(Context* context)
     {
         variable = context->declare_variable(this);
+        if (!variable)
+        {
+            context->emit_error(this, "Redeclared variable '" + this->name + "'");
+        }
     }
 
     void ASTGlobalVariable::resolution_pass(Context* context)

@@ -102,6 +102,7 @@ namespace cc
     {
         virtual size_t get_size() const = 0;
         virtual void write(void* buffer) const = 0;
+        virtual Constant* copy() const = 0;
 
         ALL_OPERATORS_VIRTUAL
     };

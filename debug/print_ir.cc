@@ -38,14 +38,12 @@ namespace cc
         {
             const auto* self_ = dynamic_cast<const BranchInstr*>(self);
             ss << "cond=" << self_->condition->as_string() << ", "
-               << "target=" << self_->target->get_name() << ", "
-               << "inline=" << self_->inlined;
+               << "target=" << self_->target->get_name();
         }
         else if (dynamic_cast<const JumpInstr*>(self))
         {
             const auto* self_ = dynamic_cast<const JumpInstr*>(self);
-            ss << "target=" << self_->target->get_name() << ", "
-               << "inline=" << self_->inlined;
+            ss << "target=" << self_->target->get_name();
         }
         else if (dynamic_cast<const MovInstr*>(self))
         {

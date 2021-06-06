@@ -85,8 +85,8 @@ namespace cc
 
         virtual ~Scope();
 
-        Scope* get_enter() const { return first_child ? first_child : younger_sibling; }
-        Scope* get_exit() const { return older_sibling ? older_sibling : parent; }
+        Scope* get_enter_scope() const { return first_child ? first_child : younger_sibling; }
+        Scope* get_exit_scope() const { return older_sibling ? older_sibling : parent; }
 
         std::string get_lineage() const;
         Block* new_block(const std::string& name = "");
@@ -97,6 +97,9 @@ namespace cc
         Scope* child() const { return first_child; }
 
         virtual LoopScope* get_loop();
+
+        Block* get_exit();
+        void set_exit(Block* block);
 
     protected:
         Scope(Context* ctx,
@@ -119,18 +122,13 @@ namespace cc
         std::vector<Block*> blocks;
 
         std::string scope_name;
+        Block* exit;
     };
 
     struct LoopScope : public Scope
     {
         LoopScope(Context* ctx, Scope* parent, Scope* older_sibling);
-
-        Block* get_exit();
-        void set_exit(Block* block);
         LoopScope* get_loop() override { return this; }
-
-    private:
-        Block* exit;
     };
 
     class Context
@@ -155,7 +153,6 @@ namespace cc
 
         Scope* scope() { return tail; }
 
-        int get_ptr_size() const { /* TODO get from platform */ return 4; }
         Module* get_module() { return module; }
 
         void enter_scope(Scope::scope_t type, const std::string &name = "");

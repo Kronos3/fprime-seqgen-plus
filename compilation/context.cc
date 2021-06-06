@@ -21,7 +21,7 @@ namespace cc
     Variable* Scope::get_variable(const std::string& name) const
     {
         // Keep travelling to outer scopes until we find the variable
-        for (const Scope* iter = this; iter; iter = iter->get_exit())
+        for (const Scope* iter = this; iter; iter = iter->get_exit_scope())
         {
             if (iter->variables.find(name) != iter->variables.end())
             {
@@ -65,7 +65,8 @@ namespace cc
     Scope::Scope(Context* ctx, std::string name, Scope* parent, Scope* older_sibling) :
         ctx(ctx), parent(parent), older_sibling(older_sibling),
         first_child(nullptr), last_child(nullptr),
-        scope_name(std::move(name)), younger_sibling(nullptr)
+        scope_name(std::move(name)), younger_sibling(nullptr),
+        exit(nullptr)
     {
     }
 
@@ -140,20 +141,18 @@ namespace cc
     }
 
     LoopScope::LoopScope(Context* ctx, Scope* parent, Scope* older_sibling) :
-            Scope(ctx, variadic_string("loop-%d", loop_scope_counter++), parent, older_sibling),
-            exit(nullptr)
+            Scope(ctx, variadic_string("loop-%d", loop_scope_counter++), parent, older_sibling)
     {
     }
 
-    void LoopScope::set_exit(Block* block)
+    void Scope::set_exit(Block* block)
     {
         assert(!exit && "Loop exit already set");
         exit = block;
     }
 
-    Block* LoopScope::get_exit()
+    Block* Scope::get_exit()
     {
-        assert(exit && "Failed to get loop exit block");
         return exit;
     }
 
@@ -183,7 +182,7 @@ namespace cc
         }
         else
         {
-            tail = tail->get_enter();
+            tail = tail->get_enter_scope();
             assert(tail && "Scope skeleton not built yet!");
         }
     }

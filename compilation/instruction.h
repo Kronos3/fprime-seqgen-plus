@@ -55,9 +55,13 @@ namespace cc
             dangling.push_back(dangle);
         }
 
-        void chain(Block* block)
+        void chain(Block* block, bool force=false)
         {
-            assert(!next_ && "Block already has a next!");
+            if (not force)
+            {
+                assert(!next_ && "Block already has a next!");
+            }
+
             next_ = block;
         }
 
@@ -169,9 +173,8 @@ namespace cc
          */
 
         Block* target;
-        bool inlined;
 
-        explicit JumpInstr(Block* target, bool inlined = false) : target(target), inlined(inlined) {}
+        explicit JumpInstr(Block* target) : target(target) {}
         std::string get_name() const override { return "JumpInstr"; }
     };
 
@@ -183,8 +186,8 @@ namespace cc
 
         const IR* condition;
 
-        explicit BranchInstr(Block* target, const IR* condition, bool inlined = true) :
-            JumpInstr(target, inlined), condition(condition) {}
+        explicit BranchInstr(Block* target, const IR* condition) :
+            JumpInstr(target), condition(condition) {}
         std::string get_name() const override { return "BranchInstr"; }
     };
 

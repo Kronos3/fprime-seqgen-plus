@@ -7,10 +7,23 @@ void main()
     {
         print("a");
     }
-    else
+    else if (2)
     {
         print("");
     }
+    else if (3)
+    {
+        print("adas");
+    }
+    else
+    {
 
-    i8* i = 6 + 2 + 7 * 3 + 5 + 2;
+    }
+
+    if (0)
+    {
+        i32 k = 0;
+    }
+
+    i8* j = 6 + 2 + 7 * 3 + 5 + 2;
 }
