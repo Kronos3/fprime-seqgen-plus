@@ -195,6 +195,8 @@ namespace cc
     Context::~Context()
     {
         delete module;
+
+        /* Remove builtin AST types */
         delete primitives[Type::VOID];
         delete primitives[Type::CHAR];
         delete primitives[Type::I8];
@@ -220,7 +222,7 @@ namespace cc
 
     Context::Context() :
     module(new Module(this)), head(module->scope()),
-    tail(head), build_scope(false)
+    tail(head), build_scope(false), function(nullptr)
     {
         primitives[Type::VOID] = new PrimitiveType<Type::VOID>(this);
         primitives[Type::CHAR] = new PrimitiveType<Type::CHAR>(this);

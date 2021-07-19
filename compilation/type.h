@@ -6,6 +6,8 @@ namespace cc
 {
     class Context;
     struct PointerType;
+    struct StructDecl;
+    struct TypeDecl;
 
     struct Type : public Value
     {

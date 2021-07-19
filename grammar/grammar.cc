@@ -1,6 +1,15 @@
-#define NEOAST_EXTERNAL_INCLUDE
-#include "neoast_parser__cc_lib.cc"
+#define NEOAST_GET_TOKENS
+#define NEOAST_GET_STRUCTURE
+
+#include <cstdint>
+#include <cstring>
+#include <neoast.h>
+#include "cc.h"
 #include "compilation/type.h"
+
+using namespace cc;
+
+#include "neoast_parser__cc_lib.h"
 
 typedef int (*keyword_cb)(const char*, NeoastUnion* self);
 

@@ -94,7 +94,8 @@ namespace cc
                         << "\n";
             }
 
-            std::cerr << std::string(e.self.col + digit_with + 1, '-')
+            // +2 to account for two extra spaces between number and line string
+            std::cerr << std::string(e.self.col + digit_with + 2, '-')
                       << "^\n"
                       << filename << ":" << e.self.line << ":" << e.self.col
                       << " " << message << ": " << e.what() << "\n\n";

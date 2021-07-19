@@ -1,10 +1,12 @@
-%top {
+%include {
     #include <iostream>
     #include <debug/print_debug.h>
     #include "cc.h"
     #include "compilation/context.h"
     #include "grammar/grammar.h"
+}
 
+%top {
     namespace cc { extern Context* cc_ctx; }
 
     static
@@ -47,8 +49,9 @@
 
 %option parser_type="LALR(1)"
 %option prefix="cc"
-%option track_position="TRUE"
+%option annotate_line="FALSE"
 %option track_position_type="ASTPosition"
+%option no_warn_builtin="TRUE"  // TODO Remove this when neoast implements compile-time DFA lexer
 %option parsing_stack_size="4096"
 %option parsing_error_cb="parser_error_cb"
 %option lexing_error_cb="lexer_error_cb"
@@ -164,8 +167,8 @@
 "-"                     { return '-'; }
 "\*"                    { return '*'; }
 "/"                     { return '/'; }
-"{"                     { return '{'; }
-"}"                     { return '}'; }
+"\{"                    { return '{'; }
+"\}"                    { return '}'; }
 "\"(\\.|[^\"\\])*\""    { yyval->identifier = strndup(yytext + 1, len - 2); return LITERAL; }
 "[0-9]+\.[0-9]*"        { yyval->floating = strtod(yytext, NULL); return FLOATING; }
 "[0-9]+"                { yyval->integer = strtol(yytext, NULL, 0); return INTEGER; }
@@ -298,8 +301,8 @@ expr_primary:
       '(' expr ')'                  { $$ = $2; }
     | IDENTIFIER '(' args ')'       { $$ = new CallExpr($p1, $1, $3); }   // Function call (no pointer/indirect calls)
     | IDENTIFIER '(' ')'            { $$ = new CallExpr($p1, $1, nullptr); }   // Function call (no pointer/indirect calls)
-    | expr_primary '.' IDENTIFIER   { $$ = nullptr; }
-    | expr_primary PTR IDENTIFIER   { $$ = nullptr; }
+//    | expr_primary '.' IDENTIFIER   { $$ = nullptr; } TODO Implement these by defining R-value and L-value
+//    | expr_primary PTR IDENTIFIER   { $$ = nullptr; }
     ;
 
 expr_first:

@@ -24,7 +24,9 @@ namespace cc
         // Preemptively create a block that will be jumped
         // to on break or condition failure
         Block* post_block = parent_scope->new_block();
-        Block* loop_block = loop_scope->get_entry_block();
+
+        // Create the block to loop over
+        Block* loop_block = loop_scope->new_block("loop");
 
         // Set up the for loop execution order
         parent_block->chain(loop_block);
@@ -57,7 +59,9 @@ namespace cc
         // Preemptively create a block that will be jumped
         // to on break or condition failure
         Block* post_block = parent_scope->new_block();
-        Block* loop_block = loop_scope->get_entry_block();
+
+        // Create the block to loop over
+        Block* loop_block = loop_scope->new_block("loop");
 
         // Set up the for loop execution order
         parent_block->chain(loop_block);
