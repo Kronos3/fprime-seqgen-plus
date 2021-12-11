@@ -12,9 +12,9 @@
     static
     void lexer_error_cb(const char* input,
                         const TokenPosition* position,
-                        uint32_t offset)
+                        const char* state_name)
     {
-        cc::cc_ctx->emit_error((ASTPosition*)position, "Unmatched token");
+        cc::cc_ctx->emit_error((ASTPosition*)position, "Unmatched token in state" + std::string(state_name));
     }
 
     static
@@ -51,7 +51,6 @@
 %option prefix="cc"
 %option annotate_line="FALSE"
 %option track_position_type="ASTPosition"
-%option no_warn_builtin="TRUE"  // TODO Remove this when neoast implements compile-time DFA lexer
 %option parsing_stack_size="4096"
 %option parsing_error_cb="parser_error_cb"
 %option lexing_error_cb="lexer_error_cb"
@@ -137,9 +136,8 @@
 
 ==
 
-"[\n]"                  { position->line++; }
-"[ \t\r\\]+"            { /* skip */ }
-"//[^\n]*"              { /* skip */ }
+"[ \n\t\r\\]+"          { /* skip whitespace */ }
+"//[^\n]*"              { /* skip line comments */ }
 "=="                    { return EQ; }
 "!="                    { return NE; }
 ">="                    { return GE; }
@@ -169,7 +167,7 @@
 "/"                     { return '/'; }
 "\{"                    { return '{'; }
 "\}"                    { return '}'; }
-"\"(\\.|[^\"\\])*\""    { yyval->identifier = strndup(yytext + 1, len - 2); return LITERAL; }
+"\"(\\.|[^\"\\])*\""    { yyval->identifier = strndup(yytext + 1, yylen - 2); return LITERAL; }
 "[0-9]+\.[0-9]*"        { yyval->floating = strtod(yytext, NULL); return FLOATING; }
 "[0-9]+"                { yyval->integer = strtol(yytext, NULL, 0); return INTEGER; }
 "[A-Za-z_][A-Za-z_0-9]*" {

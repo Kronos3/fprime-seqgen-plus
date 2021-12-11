@@ -30,14 +30,14 @@ add_executable(cc
         compilation/module.h compilation/module.cc
         compilation/type.cc compilation/type.h)
 
-set_target_properties(cc PROPERTIES LINKER_LANGUAGE CXX)
+#set_target_properties(cc PROPERTIES LINKER_LANGUAGE CXX)
 
 add_library(cc_dbg STATIC
         debug/print_ast.cc
         debug/print_debug.h
         debug/print_ir.cc)
 
-target_link_libraries(cc neoast cc_dbg neoast_builtin_lexer)
+target_link_libraries(cc neoast-lexer neoast cc_dbg)
 target_include_directories(cc_dbg PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(cc PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
