@@ -37,7 +37,7 @@ add_library(cc_dbg STATIC
         debug/print_debug.h
         debug/print_ir.cc)
 
-target_link_libraries(cc neoast-lexer neoast cc_dbg)
+target_link_libraries(cc neoast cc_dbg)
 target_include_directories(cc_dbg PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(cc PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
