@@ -16,9 +16,11 @@ namespace cc
     struct ASTPosition
     {
         uint32_t line;
-        uint32_t col;
+        uint16_t col;
+        uint16_t len;
 
-        explicit ASTPosition(const ASTPosition* position) : line(position->line), col(position->col) {}
+        explicit ASTPosition(const ASTPosition* position)
+        : line(position->line), col(position->col), len(position->len) {}
         // ASTPosition(uint32_t line, uint32_t col) : line(line), col(col) {}
     };
 

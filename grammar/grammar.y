@@ -7,49 +7,51 @@
 }
 
 %top {
-    namespace cc { extern Context* cc_ctx; }
+    #define cc_ctx (static_cast<Context*>(yycontext))
 
     static
-    void lexer_error_cb(const char* input,
+    void lexer_error_cb(void* context_v,
+                        const char* input,
                         const TokenPosition* position,
                         const char* state_name)
     {
-        cc::cc_ctx->emit_error((ASTPosition*)position, "Unmatched token in state" + std::string(state_name));
+        Context* context = static_cast<Context*>(context_v);
+        context->emit_error((ASTPosition*)position, "Unmatched token in state" + std::string(state_name));
     }
 
     static
-    void parser_error_cb(const char* const* token_names,
+    void parser_error_cb(void* context_v,
+                         const char* const* token_names,
                          const TokenPosition* position,
                          uint32_t last_token,
                          uint32_t current_token,
                          const uint32_t expected_tokens[],
                          uint32_t expected_tokens_n)
     {
-        static char error_string[1024];
-        error_string[0] = 0;
+        Context* context = static_cast<Context*>(context_v);
+        std::stringstream err_os;
+        err_os << "expected ";
 
-        sprintf(error_string,
-                "Unexpected '%s' after '%s'\n"
-                "Expected one of: ",
-                token_names[current_token],
-                token_names[last_token]);
         for (int i = 0; i < expected_tokens_n; i++)
         {
             if (i > 0)
             {
-                strcat(error_string, ", ");
+                err_os << ", ";
+                if (i + 1 == expected_tokens_n) err_os << "or ";
             }
 
-            strcat(error_string, token_names[expected_tokens[i]]);
+            err_os << token_names[expected_tokens[i]];
         }
 
-        cc::cc_ctx->emit_error((ASTPosition*)position, error_string);
+        err_os << " before " << token_names[current_token]
+               << " (and after " << token_names[last_token] << ")";
+        context->emit_error((ASTPosition*)position, err_os.str());
     }
 }
 
 %option parser_type="LALR(1)"
 %option prefix="cc"
-%option annotate_line="FALSE"
+%option annotate_line="TRUE"
 %option track_position_type="ASTPosition"
 %option parsing_stack_size="4096"
 %option parsing_error_cb="parser_error_cb"

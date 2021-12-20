@@ -7,7 +7,7 @@ using namespace cc;
 typedef void CCBuffers;
 
 extern "C" {
-cc::ASTGlobal* cc_parse(CCBuffers* buffers, const char* input);
+cc::ASTGlobal* cc_parse(void* error_ctx, CCBuffers* buffers, const char* input);
 
 CCBuffers* cc_allocate_buffers();
 void cc_free_buffers(CCBuffers*);

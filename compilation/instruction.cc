@@ -281,7 +281,8 @@ namespace cc
             case B_NOT: return ~*eval;
             case L_NOT: return !*eval;
             default:
-                throw ASTException(this, "Illegal constant expression");
+                ctx->emit_error(this, "Cannot mutate constant expression");
+                return nullptr;
         }
     }
 
