@@ -21,7 +21,6 @@ namespace cc
 
         explicit ASTPosition(const ASTPosition* position)
         : line(position->line), col(position->col), len(position->len) {}
-        // ASTPosition(uint32_t line, uint32_t col) : line(line), col(col) {}
     };
 
 
@@ -38,6 +37,17 @@ namespace cc
     struct ASTException : Exception
     {
         const ASTPosition self;
+
+        template<typename T_,
+                 typename A_,
+                 typename... Args>
+        explicit ASTException(const ASTPosition* position, T_ format,
+                              A_ arg1, Args... args)
+        : Exception(variadic_string(format, arg1, args...)),
+          self(*position)
+        {
+        }
+
         ASTException(const ASTPosition* position, const std::string& what) :
             Exception(what), self(*position)
         {
@@ -340,6 +350,7 @@ namespace cc
     {
         enum numeric_type_t
         {
+            ASCII,
             INTEGER,
             FLOATING
         };
@@ -357,8 +368,16 @@ namespace cc
         : ASTConstant(position),
         type(type), value({0})
         {
-            if (type == INTEGER) value.integer = value_;
-            else if (type == FLOATING) value.floating = value_;
+            switch(type)
+            {
+                case ASCII:
+                case INTEGER:
+                    value.integer = value_;
+                    break;
+                case FLOATING:
+                    value.floating = value_;
+                    break;
+            }
         }
 
         size_t get_size() const override { return sizeof(value); }

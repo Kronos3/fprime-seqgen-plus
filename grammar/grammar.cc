@@ -11,23 +11,27 @@ using namespace cc;
 
 #include "neoast_parser__cc_lib.h"
 
-typedef int (*keyword_cb)(const char*, NeoastUnion* self);
+typedef int (* keyword_cb)(const char*, NeoastUnion* self);
 
 using namespace cc;
 
-static struct KeywordDecl_ {
+static struct KeywordDecl_
+{
     const char* name;
     int value;
     keyword_cb cb;
 } keywords[] = {
-        {"if", IF},
-        {"else", ELSE},
-        {"for", FOR},
-        {"while", WHILE},
+        {"if",       IF},
+        {"else",     ELSE},
+        {"for",      FOR},
+        {"while",    WHILE},
         {"continue", CONTINUE},
-        {"break", BREAK},
-        {"return", RETURN},
-        {"struct", STRUCT},
+        {"break",    BREAK},
+        {"return",   RETURN},
+        {"struct",   STRUCT},
+        {"switch",   SWITCH},
+        {"case",     CASE},
+        {"default",  DEFAULT},
         {nullptr}
 };
 

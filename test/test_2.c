@@ -25,10 +25,11 @@ i8 main()
         i32 k = 0;
     }
 
-    i8 if_variable;
+    u8 if_variable;
     i8** * * * j = 6 + 2 + 7 * 3 + 5 + 2;
     j = (j << 4) + 4 + 3 << 3;
 
     //return 1;
-    return 3;
+//    return 3;
+    return j;
 }

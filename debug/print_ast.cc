@@ -92,6 +92,9 @@ namespace cc
             const auto* self_c = dynamic_cast<const NumericExpr*>(self);
             switch(self_c->type)
             {
+                case NumericExpr::ASCII:
+                    ss << "Ascii(" << (char)self_c->value.integer << ")";
+                    break;
                 case NumericExpr::INTEGER:
                     ss << "Int(" << self_c->value.integer << ")";
                     break;

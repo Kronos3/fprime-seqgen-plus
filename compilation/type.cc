@@ -27,12 +27,17 @@ namespace cc
 
     const Type* Type::get(Context* ctx, const std::string &name)
     {
+        // Builtin types
         if (name == "void") return ctx->type<VOID>();
         else if (name == "char") return ctx->type<CHAR>();
         else if (name == "i8") return ctx->type<I8>();
+        else if (name == "u8") return ctx->unsigned_type<I8>();
         else if (name == "i16") return ctx->type<I16>();
+        else if (name == "u16") return ctx->unsigned_type<I16>();
         else if (name == "i32") return ctx->type<I32>();
+        else if (name == "u32") return ctx->unsigned_type<I32>();
         else if (name == "i64") return ctx->type<I64>();
+        else if (name == "u64") return ctx->unsigned_type<I64>();
         else if (name == "f32") return ctx->type<F32>();
         else if (name == "f64") return ctx->type<F64>();
 
@@ -150,6 +155,7 @@ namespace cc
     {
         TAKE_STRING(name, name_);
         ctx->emit_error(position, "Unresolved type '" + std::string(type_ident) + "'");
+        free(const_cast<char*>(type_ident));
     }
 
     QualType::QualType(Context* ctx, int starting, const Type* type)
@@ -162,6 +168,8 @@ namespace cc
     {
         switch(type)
         {
+            case ASCII:
+                return ctx->type<Type::CHAR>();
             case INTEGER:
             {
                 if (value.integer > INT32_MAX || value.integer < INT32_MIN)
@@ -174,20 +182,8 @@ namespace cc
                 }
             }
             case FLOATING:
-            {
-                // Check if this value fits in float before
-                // promoting to double
-                auto f = static_cast<float>(value.floating);
-
-                if (f == value.floating)
-                {
-                    return ctx->type<Type::F32>();
-                }
-                else
-                {
-                    return ctx->type<Type::F64>();
-                }
-            }
+                // Floating point literals are always doubles in C
+                return ctx->type<Type::F64>();
         }
 
         throw Exception("Invalid NumericExpr");

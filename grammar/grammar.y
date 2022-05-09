@@ -12,11 +12,11 @@
     static
     void lexer_error_cb(void* context_v,
                         const char* input,
-                        const TokenPosition* position,
+                        const ASTPosition* position,
                         const char* state_name)
     {
         Context* context = static_cast<Context*>(context_v);
-        context->emit_error((ASTPosition*)position, "Unmatched token in state" + std::string(state_name));
+        context->emit_error(position, "Unmatched token in state" + std::string(state_name));
     }
 
     static
@@ -47,6 +47,46 @@
                << " (and after " << token_names[last_token] << ")";
         context->emit_error((ASTPosition*)position, err_os.str());
     }
+
+    static inline char ll_handle_ascii(
+                void* yycontext,
+                const ASTPosition* position,
+                const char* yytext)
+    {
+        Context* context = static_cast<Context*>(yycontext);
+        if (yytext[1] != '\\')
+        {
+            return yytext[1];
+        }
+        else
+        {
+            // Handle all escape sequences supported in C
+            switch(yytext[2])
+            {
+    #define HANDLE_ESCAPE(n, c) case (n): \
+                return (c); \
+                break
+            HANDLE_ESCAPE('a', '\a');
+            HANDLE_ESCAPE('b', '\b');
+    //        HANDLE_ESCAPE('e', '\e');
+            HANDLE_ESCAPE('f', '\f');
+            HANDLE_ESCAPE('n', '\n');
+            HANDLE_ESCAPE('r', '\r');
+            HANDLE_ESCAPE('t', '\t');
+            HANDLE_ESCAPE('v', '\v');
+            HANDLE_ESCAPE('\\', '\\');
+            HANDLE_ESCAPE('\'', '\'');
+            HANDLE_ESCAPE('"', '"');
+            HANDLE_ESCAPE('?', '?');
+            default:
+                context->emit_error(position,
+                                    "unhandled escape sequence '\\%c'",
+                                    yytext[2]);
+                return 0;
+    #undef HANDLE_ESCAPE
+            }
+        }
+    }
 }
 
 %option parser_type="LALR(1)"
@@ -58,6 +98,7 @@
 %option lexing_error_cb="lexer_error_cb"
 
 %union {
+    char ascii;
     char* identifier;
     int64_t integer;
     double floating;
@@ -79,19 +120,20 @@
 }
 
 %destructor <identifier> { free($$); }
-%destructor <global> { delete $$; }
-%destructor <structure> { delete $$; }
-%destructor <fields> { delete $$; }
-%destructor <f_args> { delete $$; }
-%destructor <function> { delete $$; }
-%destructor <stmt> { delete $$; }
-%destructor <loop> { delete $$; }
-%destructor <if_clause> { delete $$; }
+%destructor <global>     { delete $$; }
+%destructor <structure>  { delete $$; }
+%destructor <fields>     { delete $$; }
+%destructor <f_args>     { delete $$; }
+%destructor <function>   { delete $$; }
+%destructor <stmt>       { delete $$; }
+%destructor <loop>       { delete $$; }
+%destructor <if_clause>  { delete $$; }
 %destructor <multi_stmt> { delete $$; }
-%destructor <args> { delete $$; }
-%destructor <expr> { delete $$; }
-%destructor <v_decl> { delete $$; }
+%destructor <args>       { delete $$; }
+%destructor <expr>       { delete $$; }
+%destructor <v_decl>     { delete $$; }
 
+%token <ascii> ASCII
 %token <identifier> IDENTIFIER
 %token <identifier> LITERAL
 %token <integer> INTEGER
@@ -99,6 +141,7 @@
 
 // Keywords
 %token IF ELSE FOR WHILE CONTINUE BREAK RETURN STRUCT
+%token SWITCH CASE DEFAULT
 
 // Qualifiers
 %token<qualifier_prim> QUALIFIER
@@ -108,7 +151,7 @@
 %token '.' PTR
 
 // ASCII
-%token '(' ')' '+' '-' '*' '/' '{' '}' '!' ',' ';' '=' '&' '|' '^' '~'
+%token '(' ')' '+' '-' '*' '/' '{' '}' '!' ':' ',' ';' '=' '&' '|' '^' '~'
 %token<type> TYPENAME
 %token SR SL
 
@@ -127,14 +170,18 @@
 %type<fields> fields_decl
 %type<structure> struct_decl
 %type<args> args
-%type<expr> expr expr_ expr_first expr_primary
+%type<expr> expr expr_ expr_first expr_primary integral_expr
 %type<v_decl> v_decl
-%type<stmt> error_types open_stmt closed_stmt simple_stmt decl_stmt bracket_stmt stmt
+%type<stmt> error_types open_stmt closed_stmt simple_stmt decl_stmt
+%type<stmt> bracket_stmt stmt case_stmt
 %type<multi_stmt> multi_stmt
 %type<loop> loop_header
 %type<if_clause> if_clause
 %type<global> global prog
 %start<global> prog
+
++identifier             [A-Za-z_][A-Za-z_0-9]*
++ascii          '([\x20-\x7E]|\\.)'
 
 ==
 
@@ -172,12 +219,13 @@
 "\"(\\.|[^\"\\])*\""    { yyval->identifier = strndup(yytext + 1, yylen - 2); return LITERAL; }
 "[0-9]+\.[0-9]*"        { yyval->floating = strtod(yytext, NULL); return FLOATING; }
 "[0-9]+"                { yyval->integer = strtol(yytext, NULL, 0); return INTEGER; }
-"[A-Za-z_][A-Za-z_0-9]*" {
+"{identifier}"          {
                             int keyword_i = handle_keyword(cc_ctx, yytext, yyval);
                             if (keyword_i >= 0) return keyword_i;
                             yyval->identifier = strdup(yytext);
                             return IDENTIFIER;
                         }
+"{ascii}"               { yyval->ascii = ll_handle_ascii(yycontext, yyposition, yytext); return ASCII; }
 
 ==
 
@@ -230,14 +278,13 @@ multi_stmt:
   ;
 
 bracket_stmt:
-    '{' multi_stmt '}'  { $$ = $2; }
-  | '{' '}'             { $$ = nullptr; }
+      '{' multi_stmt '}'  { $$ = $2; }
+    | '{' '}'             { $$ = nullptr; }
     ;
 
-stmt:
-    open_stmt           { $$ = $1; }
-  | closed_stmt         { $$ = $1; }
-  ;
+stmt: open_stmt
+    | closed_stmt
+    ;
 
 // The open/closed statement shenanigans is
 // meant to make the if/else syntax non-ambigious
@@ -258,6 +305,18 @@ simple_stmt:
     | expr      ';'             { $$ = new Eval($1); }
     ;
 
+//case_stmt: CASE integral_expr ':' { $$ = new Case($p2, $2, $4); }
+//         | DEFAULT ':'            { $$ = new Default($p1, $3); }
+//         | case_stmt case_stmt
+//         ;
+//
+//switch_stmts: case_stmt
+//            | case_stmt switch_stmt {  }
+//            ;
+//
+//switch_stmt: SWITCH '{'
+//           ;
+
 closed_stmt:
       simple_stmt               { $$ = $1; }
     | CONTINUE ';'              { $$ = new Continue($p1); }
@@ -265,6 +324,7 @@ closed_stmt:
     | RETURN   ';'              { $$ = new Return($p1); }
     | RETURN  expr  ';'         { $$ = new Return($p1, $2); }
     | ';'                       { cc_ctx->emit_warning($p1, "Empty statement"); $$ = nullptr; }
+//    | switch_stmt               { $$ = $1; }
     | bracket_stmt              { $$ = $1; }
     | loop_header closed_stmt   { $$ = $1; $1->body = $2; }
     | if_clause closed_stmt ELSE closed_stmt { $$ = $1; $1->then_stmt = $2; $1->else_stmt = $4; }
@@ -305,10 +365,14 @@ expr_primary:
 //    | expr_primary PTR IDENTIFIER   { $$ = nullptr; }
     ;
 
+integral_expr: INTEGER      { $$ = new NumericExpr($p1, NumericExpr::INTEGER, $1); }
+             | ASCII        { $$ = new NumericExpr($p1, NumericExpr::ASCII, $1); }
+             ;
+
 expr_first:
       IDENTIFIER            { $$ = new VariableExpr($p1, $1); }
-    | INTEGER               { $$ = new NumericExpr($p1, NumericExpr::INTEGER, $1); }
     | FLOATING              { $$ = new NumericExpr($p1, NumericExpr::FLOATING, $1); }
+    | integral_expr
     | LITERAL               { $$ = new LiteralExpr($p1, $1); }
     | expr_ '/' expr_       { $$ = new BinaryExpr($1, $3, BinaryExpr::A_DIV); }
     | expr_ '*' expr_       { $$ = new BinaryExpr($1, $3, BinaryExpr::A_MUL); }

@@ -5,7 +5,6 @@
 #include <fstream>
 #include <grammar/grammar.h>
 #include <iostream>
-#include <iomanip>
 #include <debug/print_debug.h>
 
 namespace cc
@@ -84,7 +83,6 @@ namespace cc
                 continue;
             }
 
-            size_t l_len;
             os << variadic_string("% *d | %s\n", dig_n, i + 1,
                                   lines[i].c_str());
         }

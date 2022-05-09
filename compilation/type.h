@@ -13,11 +13,11 @@ namespace cc
     {
         enum primitive_t
         {
-            VOID,
             I8,        //!< Unsigned is set by a qualifier
             I16,
             I32,
             I64,
+            VOID,
             F32,
             F64,
             CHAR,

@@ -207,6 +207,8 @@ namespace cc
         delete primitives[Type::F64];
         delete primitives[Type::PTR];
 
+        // Unsigned built-ins are cleared by extra types
+
         for (auto& iter : complex_types)
         {
             delete iter.second;
@@ -224,7 +226,6 @@ namespace cc
     module(new Module(this)), head(module->scope()),
     tail(head), build_scope(false), function(nullptr)
     {
-        primitives[Type::VOID] = new PrimitiveType<Type::VOID>(this);
         primitives[Type::CHAR] = new PrimitiveType<Type::CHAR>(this);
         primitives[Type::I8] = new PrimitiveType<Type::I8>(this);
         primitives[Type::I16] = new PrimitiveType<Type::I16>(this);
@@ -233,6 +234,12 @@ namespace cc
         primitives[Type::F32] = new PrimitiveType<Type::F32>(this);
         primitives[Type::F64] = new PrimitiveType<Type::F64>(this);
         primitives[Type::PTR] = new PrimitiveType<Type::PTR>(this);
+        primitives[Type::VOID] = new PrimitiveType<Type::VOID>(this);
+
+        unsigned_primitives[Type::I8] = new QualType(this, QualType::UNSIGNED, primitives[Type::I8]);
+        unsigned_primitives[Type::I16] = new QualType(this, QualType::UNSIGNED, primitives[Type::I16]);
+        unsigned_primitives[Type::I32] = new QualType(this, QualType::UNSIGNED, primitives[Type::I32]);
+        unsigned_primitives[Type::I64] = new QualType(this, QualType::UNSIGNED, primitives[Type::I64]);
     }
 
     const Type* Context::declare_structure(StructDecl* structure)
