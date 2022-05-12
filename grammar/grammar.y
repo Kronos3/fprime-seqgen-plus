@@ -108,8 +108,6 @@
     Arguments* f_args;
     CallArguments* args;
     TypeDecl* v_decl;
-    int qualifier_prim;
-    QualType* qual_type;
     const Type* type;
     Statement* stmt;
     MultiStatement* multi_stmt;
@@ -121,8 +119,6 @@
 
 %destructor <identifier> { free($$); }
 %destructor <global>     { delete $$; }
-%destructor <structure>  { delete $$; }
-%destructor <fields>     { delete $$; }
 %destructor <f_args>     { delete $$; }
 %destructor <function>   { delete $$; }
 %destructor <stmt>       { delete $$; }
@@ -140,11 +136,7 @@
 %token <floating> FLOATING
 
 // Keywords
-%token IF ELSE FOR WHILE CONTINUE BREAK RETURN STRUCT
-%token SWITCH CASE DEFAULT
-
-// Qualifiers
-%token<qualifier_prim> QUALIFIER
+%token IF ELSE FOR WHILE CONTINUE BREAK RETURN
 
 // Operators
 %token EQ NE GT GE LT LE L_AND L_OR INC DEC
@@ -152,7 +144,7 @@
 
 // ASCII
 %token '(' ')' '+' '-' '*' '/' '{' '}' '!' ':' ',' ';' '=' '&' '|' '^' '~'
-%token<type> TYPENAME
+%token<type> PRIMITIVE
 %token SR SL
 
 %left '+' '-'
@@ -181,7 +173,7 @@
 %start<global> prog
 
 +identifier             [A-Za-z_][A-Za-z_0-9]*
-+ascii          '([\x20-\x7E]|\\.)'
++ascii                  '([\x20-\x7E]|\\.)'
 
 ==
 
@@ -237,29 +229,9 @@ prog: global prog      { $$ = $1; $$->next = $2; }
 global:
     function                { $$ = $1; }
     | decl_stmt ';'         { $$ = new ASTGlobalVariable(dynamic_cast<Decl*>($1)); }
-    | struct_decl ';'       { $$ = $1; }
     ;
 
-fields_decl: v_decl ';' fields_decl { $$ = new FieldDecl($p1, $1); $$->next = $3; }
-           | v_decl ';'             { $$ = new FieldDecl($p1, $1); }
-           ;
-
-struct_decl: STRUCT '{' fields_decl '}'             { $$ = new StructDecl($p1, cc_ctx, $3); }
-           | STRUCT IDENTIFIER '{' fields_decl '}'  { $$ = new StructDecl($p1, cc_ctx, $2, $4); }
-           ;
-
-qual: QUALIFIER                 { $$ = $1; }
-    | QUALIFIER qual            { $$ = $1 | $2; }
-    ;
-
-type: TYPENAME                  { $$ = $1; }
-    | qual type                 { $$ = new QualType(cc_ctx, $1, $2); }
-    | type '*'                  { $$ = $1->get_pointer_to(); }
-    | struct_decl               { $$ = $1->get_type(); delete $1; }
-    ;
-
-v_decl: type IDENTIFIER         { $$ = new TypeDecl($p2, $1, $2); }
-      | IDENTIFIER IDENTIFIER   { $$ = new TypeDecl(cc_ctx, $p1, $1, $2); }
+v_decl: TYPENAME IDENTIFIER     { $$ = new TypeDecl($p2, $1, $2); }
       ;
 
 if_clause: IF '(' expr ')'      { $$ = new If($3); }
@@ -305,18 +277,6 @@ simple_stmt:
     | expr      ';'             { $$ = new Eval($1); }
     ;
 
-//case_stmt: CASE integral_expr ':' { $$ = new Case($p2, $2, $4); }
-//         | DEFAULT ':'            { $$ = new Default($p1, $3); }
-//         | case_stmt case_stmt
-//         ;
-//
-//switch_stmts: case_stmt
-//            | case_stmt switch_stmt {  }
-//            ;
-//
-//switch_stmt: SWITCH '{'
-//           ;
-
 closed_stmt:
       simple_stmt               { $$ = $1; }
     | CONTINUE ';'              { $$ = new Continue($p1); }
@@ -324,7 +284,6 @@ closed_stmt:
     | RETURN   ';'              { $$ = new Return($p1); }
     | RETURN  expr  ';'         { $$ = new Return($p1, $2); }
     | ';'                       { cc_ctx->emit_warning($p1, "Empty statement"); $$ = nullptr; }
-//    | switch_stmt               { $$ = $1; }
     | bracket_stmt              { $$ = $1; }
     | loop_header closed_stmt   { $$ = $1; $1->body = $2; }
     | if_clause closed_stmt ELSE closed_stmt { $$ = $1; $1->then_stmt = $2; $1->else_stmt = $4; }
@@ -361,8 +320,6 @@ expr_primary:
       '(' expr ')'                  { $$ = $2; }
     | IDENTIFIER '(' args ')'       { $$ = new CallExpr($p1, $1, $3); }   // Function call (no pointer/indirect calls)
     | IDENTIFIER '(' ')'            { $$ = new CallExpr($p1, $1, nullptr); }   // Function call (no pointer/indirect calls)
-//    | expr_primary '.' IDENTIFIER   { $$ = nullptr; } TODO Implement these by defining R-value and L-value
-//    | expr_primary PTR IDENTIFIER   { $$ = nullptr; }
     ;
 
 integral_expr: INTEGER      { $$ = new NumericExpr($p1, NumericExpr::INTEGER, $1); }

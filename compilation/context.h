@@ -150,7 +150,6 @@ namespace cc
         std::unordered_map<std::string, Type*> complex_types;
 
         Type* primitives[Type::P_N]{nullptr};
-        QualType* unsigned_primitives[Type::VOID]{nullptr};
         std::vector<Type*> extra_types;
     public:
         Context();
@@ -172,15 +171,7 @@ namespace cc
         template<Type::primitive_t T>
         const Type* type() const
         {
-            static_assert(T < Type::ENUM, "Only primitives are allowed here");
             return primitives[T];
-        }
-
-        template<Type::primitive_t T>
-        const QualType* unsigned_type() const
-        {
-            static_assert(T < Type::VOID, "Only integer type are allowed here");
-            return unsigned_primitives[T];
         }
 
         const Type* type(const std::string &name) const

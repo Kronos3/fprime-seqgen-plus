@@ -1,13 +1,7 @@
 #define NEOAST_GET_TOKENS
 #define NEOAST_GET_STRUCTURE
 
-#include <cstdint>
 #include <cstring>
-#include <neoast.h>
-#include "cc.h"
-#include "compilation/type.h"
-
-using namespace cc;
 
 #include "neoast_parser__cc_lib.h"
 
@@ -19,7 +13,6 @@ static struct KeywordDecl_
 {
     const char* name;
     int value;
-    keyword_cb cb;
 } keywords[] = {
         {"if",       IF},
         {"else",     ELSE},
@@ -28,40 +21,17 @@ static struct KeywordDecl_
         {"continue", CONTINUE},
         {"break",    BREAK},
         {"return",   RETURN},
-        {"struct",   STRUCT},
-        {"switch",   SWITCH},
-        {"case",     CASE},
-        {"default",  DEFAULT},
         {nullptr}
 };
 
-int handle_keyword(Context* ctx, const char* text, void* yyval)
+int handle_keyword(const char* text)
 {
     for (struct KeywordDecl_* iter = keywords; iter->name; iter++)
     {
         if (strcmp(iter->name, text) == 0)
         {
-            if (iter->cb)
-            {
-                return iter->cb(text, static_cast<NeoastUnion*>(yyval));
-            }
-
             return iter->value;
         }
-    }
-
-    const Type* type = Type::get(ctx, text);
-    if (type)
-    {
-        static_cast<NeoastUnion*>(yyval)->type = type;
-        return TYPENAME;
-    }
-
-    QualType::qual_t q = QualType::get(ctx, text);
-    if (q != cc::QualType::NONE)
-    {
-        static_cast<NeoastUnion*>(yyval)->qualifier_prim = q;
-        return QUALIFIER;
     }
 
     return -1;
