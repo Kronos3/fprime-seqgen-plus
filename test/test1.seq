@@ -1,0 +1,26 @@
+my_variable: I32
+my_variable_with_assign: I32 = 0
+
+; Comment
+def func_no_args() -> void: // inline comment
+    if (1 == my_variable) > 6:
+        my_variable = 0
+        while (my_variable < 10):
+            comp.COMMAND "string" 1 0x2 1.2 ENUM
+            my_variable = my_variable + 1
+            continue
+            break
+
+    if 1:
+        pass
+    elif 2:
+        pass
+    elif 3:
+        pass
+    else:
+        pass
+
+
+def func_args(var: F32, p: U64) -> string:
+    return
+    return "hello"

@@ -1,0 +1,1420 @@
+<dictionary topology="RpiRTLinux" framework_version="2.0.2.dev180+gc03690840">
+  <enums>
+    <enum type="ActiveLogger::FilterLevel::EventLevel">
+      <item name="FILTER_WARNING_HI" value="0"/>
+      <item name="FILTER_WARNING_LO" value="1"/>
+      <item name="FILTER_COMMAND" value="2"/>
+      <item name="FILTER_ACTIVITY_HI" value="3"/>
+      <item name="FILTER_ACTIVITY_LO" value="4"/>
+      <item name="FILTER_DIAGNOSTIC" value="5"/>
+    </enum>
+    <enum type="ActiveLogger::FilterEnable::FilterEnabled">
+      <item name="FILTER_ENABLED" value="0"/>
+      <item name="FILTER_DISABLED" value="1"/>
+    </enum>
+    <enum type="ActiveLogger::IdFilterEnable::IdFilterEnabled">
+      <item name="ID_ENABLED" value="0"/>
+      <item name="ID_DISABLED" value="1"/>
+    </enum>
+    <enum type="ActiveLogger::severity::EventFilterState">
+      <item name="FILT_WARNING_HI" value="0"/>
+      <item name="FILT_WARNING_LO" value="1"/>
+      <item name="FILT_COMMAND" value="2"/>
+      <item name="FILT_ACTIVITY_HI" value="3"/>
+      <item name="FILT_ACTIVITY_LO" value="4"/>
+      <item name="FILT_DIAGNOSTIC" value="5"/>
+    </enum>
+    <enum type="CommandDispatcher::error::ErrorResponse">
+      <item name="ERR_INVALID_OPCODE" value="0" description="Invalid opcode dispatched"/>
+      <item name="ERR_VALIDATION_ERROR" value="1" description="Command failed validation"/>
+      <item name="ERR_FORMAT_ERROR" value="2" description="Command failed to deserialize"/>
+      <item name="ERR_EXECUTION_ERROR" value="3" description="Command had execution error"/>
+      <item name="ERR_BUSY" value="4" description="Component busy"/>
+      <item name="ERR_UNEXP" value="5" description="Unexpected response"/>
+    </enum>
+    <enum type="CommandDispatcher::Status::CmdSerError">
+      <item name="ERR_BUFFER_TOO_SMALL" value="0" description="Buffer too small"/>
+      <item name="ERR_BUFFER_FORMAT" value="1" description="Buffer wrong format"/>
+      <item name="ERR_SIZE_MISMATCH" value="2" description="Buffer size mismatch"/>
+      <item name="ERR_TYPE_MISMATCH" value="3" description="Buffer type mismatch"/>
+      <item name="ERR_UNEXP_STAT" value="4" description="Unexpected status"/>
+    </enum>
+    <enum type="PrmDb::stage::PrmWriteError">
+      <item name="PRM_WRITE_OPEN" value="0"/>
+      <item name="PRM_WRITE_DELIMITER" value="1"/>
+      <item name="PRM_WRITE_DELIMITER_SIZE" value="2"/>
+      <item name="PRM_WRITE_RECORD_SIZE" value="3"/>
+      <item name="PRM_WRITE_RECORD_SIZE_SIZE" value="4"/>
+      <item name="PRM_WRITE_PARAMETER_ID" value="5"/>
+      <item name="PRM_WRITE_PARAMETER_ID_SIZE" value="6"/>
+      <item name="PRM_WRITE_PARAMETER_VALUE" value="7"/>
+      <item name="PRM_WRITE_PARAMETER_VALUE_SIZE" value="8"/>
+    </enum>
+    <enum type="PrmDb::stage::PrmReadError">
+      <item name="PRM_READ_OPEN" value="0"/>
+      <item name="PRM_READ_DELIMITER" value="1"/>
+      <item name="PRM_READ_DELIMITER_SIZE" value="2"/>
+      <item name="PRM_READ_DELIMITER_VALUE" value="3"/>
+      <item name="PRM_READ_RECORD_SIZE" value="4"/>
+      <item name="PRM_READ_RECORD_SIZE_SIZE" value="5"/>
+      <item name="PRM_READ_RECORD_SIZE_VALUE" value="6"/>
+      <item name="PRM_READ_PARAMETER_ID" value="7"/>
+      <item name="PRM_READ_PARAMETER_ID_SIZE" value="8"/>
+      <item name="PRM_READ_PARAMETER_VALUE" value="9"/>
+      <item name="PRM_READ_PARAMETER_VALUE_SIZE" value="10"/>
+    </enum>
+    <enum type="CmdSequencer::block::SeqBlkState">
+      <item name="SEQ_BLOCK" value="0"/>
+      <item name="SEQ_NO_BLOCK" value="1"/>
+    </enum>
+    <enum type="CmdSequencer::stage::FileReadStage">
+      <item name="SEQ_READ_HEADER" value="0"/>
+      <item name="SEQ_READ_HEADER_SIZE" value="1"/>
+      <item name="SEQ_DESER_SIZE" value="2"/>
+      <item name="SEQ_DESER_NUM_RECORDS" value="3"/>
+      <item name="SEQ_DESER_TIME_BASE" value="4"/>
+      <item name="SEQ_DESER_TIME_CONTEXT" value="5"/>
+      <item name="SEQ_READ_SEQ_CRC" value="6"/>
+      <item name="SEQ_READ_SEQ_DATA" value="7"/>
+      <item name="SEQ_READ_SEQ_DATA_SIZE" value="8"/>
+    </enum>
+    <enum type="CmdSequencer::mode::SeqMode">
+      <item name="SEQ_STEP_MODE" value="0"/>
+      <item name="SEQ_AUTO_MODE" value="1"/>
+    </enum>
+    <enum type="Rpi::CamListener">
+      <item name="NONE" value="-1" description=""/>
+      <item name="VIDEO_STREAMER" value="0" description=""/>
+      <item name="VIS" value="1" description=""/>
+    </enum>
+    <enum type="Cam::METERING_MODE::MeteringMode">
+      <item name="METERING_CENTRE_WEIGHTED" value="0"/>
+      <item name="METERING_SPOT" value="1"/>
+      <item name="METERING_MATRIX" value="2"/>
+      <item name="METERING_CUSTOM" value="3"/>
+    </enum>
+    <enum type="Cam::EXPOSURE_MODE::ExposureMode">
+      <item name="EXPOSURE_NORMAL" value="0"/>
+      <item name="EXPOSURE_SHORT" value="1"/>
+      <item name="EXPOSURE_LONG" value="2"/>
+      <item name="EXPOSURE_CUSTOM" value="3"/>
+    </enum>
+    <enum type="Cam::AWB::AutoWhiteBalance">
+      <item name="AWB_AUTO" value="0"/>
+      <item name="AWB_INCANDESCENT" value="1"/>
+      <item name="AWB_TUNGSTEN" value="2"/>
+      <item name="AWB_FLUORESCENT" value="3"/>
+      <item name="AWB_INDOOR" value="4"/>
+      <item name="AWB_DAYLIGHT" value="5"/>
+      <item name="AWB_CLOUDY" value="6"/>
+      <item name="AWB_CUSTOM" value="7"/>
+    </enum>
+    <enum type="Cam::DENOISE::DenoiseAlgorithm">
+      <item name="DENOISE_OFF" value="0"/>
+      <item name="DENOISE_FAST" value="1"/>
+      <item name="DENOISE_HIGH_QUALITY" value="2"/>
+      <item name="DENOISE_MINIMAL" value="3"/>
+      <item name="DENOISE_ZSL" value="4"/>
+    </enum>
+    <enum type="Drv::I2cStatus">
+      <item name="I2C_OK" value="0" description="Transaction okay"/>
+      <item name="I2C_ADDRESS_ERR" value="1" description="I2C address invalid"/>
+      <item name="I2C_WRITE_ERR" value="2" description="I2C write failed"/>
+      <item name="I2C_READ_ERR" value="3" description="I2C read failed"/>
+      <item name="I2C_OTHER_ERR" value="4" description="Other errors that don't fit"/>
+    </enum>
+    <enum type="Rpi::MSP432PwmOpcode">
+      <item name="STOP" value="0" description=""/>
+      <item name="SERVO" value="1" description=""/>
+      <item name="DC0_FORWARD" value="2" description=""/>
+      <item name="DC0_BACKWARD" value="3" description=""/>
+      <item name="DC1_FORWARD" value="4" description=""/>
+      <item name="DC1_BACKWARD" value="5" description=""/>
+    </enum>
+    <enum type="VideoStreamer::where::DisplayLocation">
+      <item name="HDMI" value="0"/>
+      <item name="UDP" value="1"/>
+      <item name="BOTH" value="2"/>
+    </enum>
+    <enum type="Rpi::VisListener">
+      <item name="NONE" value="-1" description=""/>
+      <item name="VIDEO_STREAMER" value="0" description=""/>
+      <item name="NAV" value="1" description=""/>
+    </enum>
+    <enum type="Rpi::VisPipe">
+      <item name="FIND_CHESSBOARD" value="0" description=""/>
+      <item name="POSE_CALCULATION" value="1" description=""/>
+      <item name="WARP_CALCULATION" value="2" description=""/>
+      <item name="DOWNSCALE" value="3" description=""/>
+      <item name="GAUSSIAN" value="4" description=""/>
+      <item name="GRADIENT" value="5" description=""/>
+      <item name="ERODE" value="6" description=""/>
+      <item name="OTSU_THRESHOLD" value="7" description=""/>
+      <item name="WARP" value="8" description=""/>
+      <item name="MASK_QUAD" value="9" description=""/>
+    </enum>
+    <enum type="Rpi::VisInterpolation">
+      <item name="NEAREST" value="0" description=""/>
+      <item name="LINEAR" value="1" description=""/>
+      <item name="CUBIC" value="2" description=""/>
+    </enum>
+    <enum type="Vis::record_type::VisRecordType">
+      <item name="CALIBRATION_RECORD" value="0"/>
+      <item name="WARP_RECORD" value="1"/>
+    </enum>
+    <enum type="Rpi::NavAlgorithmType">
+      <item name="NONE" value="0" description="No mot commanding will be transmitted, frames are passed through to the output video port."/>
+      <item name="SIMPLE" value="1" description="Look through a non-moving horizontal slit and stay away from edges via P-control."/>
+      <item name="SIMPLE_PID" value="2" description="Draw the center line via a spline"/>
+      <item name="COMPLEX_PID" value="3" description="Draw out the racing line via a spline"/>
+      <item name="DIAG_CONTOUR" value="4" description="Draw contour lines (diagnostic)"/>
+    </enum>
+  </enums>
+  <serializables>
+    <serializable type="Rpi::MSP432Pwm">
+      <members>
+        <member name="opcode" format_specifier="%s" type="Rpi::MSP432PwmOpcode"/>
+        <member name="value" format_specifier="%u" type="U8"/>
+      </members>
+    </serializable>
+  </serializables>
+  <arrays/>
+  <commands>
+    <command component="eventLogger" mnemonic="SET_EVENT_FILTER" opcode="0x12c">
+      <args>
+        <arg name="FilterLevel" type="ActiveLogger::FilterLevel::EventLevel"/>
+        <arg name="FilterEnable" type="ActiveLogger::FilterEnable::FilterEnabled"/>
+      </args>
+    </command>
+    <command component="eventLogger" mnemonic="SET_ID_FILTER" opcode="0x12e">
+      <args>
+        <arg name="ID" type="U32"/>
+        <arg name="IdFilterEnable" type="ActiveLogger::IdFilterEnable::IdFilterEnabled"/>
+      </args>
+    </command>
+    <command component="eventLogger" mnemonic="DUMP_FILTER_STATE" opcode="0x12f">
+      <args/>
+    </command>
+    <command component="cmdDisp" mnemonic="CMD_NO_OP" opcode="0x190">
+      <args/>
+    </command>
+    <command component="cmdDisp" mnemonic="CMD_NO_OP_STRING" opcode="0x191">
+      <args>
+        <arg name="arg1" len="40" type="string"/>
+      </args>
+    </command>
+    <command component="cmdDisp" mnemonic="CMD_TEST_CMD_1" opcode="0x192">
+      <args>
+        <arg name="arg1" type="I32"/>
+        <arg name="arg2" type="F32"/>
+        <arg name="arg3" type="U8"/>
+      </args>
+    </command>
+    <command component="cmdDisp" mnemonic="CMD_CLEAR_TRACKING" opcode="0x193">
+      <args/>
+    </command>
+    <command component="prmDb" mnemonic="PRM_SAVE_FILE" opcode="0x258">
+      <args/>
+    </command>
+    <command component="fileManager" mnemonic="CreateDirectory" opcode="0x2bc">
+      <args>
+        <arg name="dirName" len="256" type="string"/>
+      </args>
+    </command>
+    <command component="fileManager" mnemonic="MoveFile" opcode="0x2bd">
+      <args>
+        <arg name="sourceFileName" len="256" type="string"/>
+        <arg name="destFileName" len="256" type="string"/>
+      </args>
+    </command>
+    <command component="fileManager" mnemonic="RemoveDirectory" opcode="0x2be">
+      <args>
+        <arg name="dirName" len="256" type="string"/>
+      </args>
+    </command>
+    <command component="fileManager" mnemonic="RemoveFile" opcode="0x2bf">
+      <args>
+        <arg name="fileName" len="256" type="string"/>
+      </args>
+    </command>
+    <command component="fileManager" mnemonic="ShellCommand" opcode="0x2c0">
+      <args>
+        <arg name="command" len="256" type="string"/>
+        <arg name="logFileName" len="256" type="string"/>
+      </args>
+    </command>
+    <command component="fileManager" mnemonic="AppendFile" opcode="0x2c1">
+      <args>
+        <arg name="source" len="256" type="string"/>
+        <arg name="target" len="256" type="string"/>
+      </args>
+    </command>
+    <command component="cmdSeq" mnemonic="CS_RUN" opcode="0x320">
+      <args>
+        <arg name="fileName" len="100" type="string"/>
+        <arg name="block" type="CmdSequencer::block::SeqBlkState"/>
+      </args>
+    </command>
+    <command component="cmdSeq" mnemonic="CS_VALIDATE" opcode="0x321">
+      <args>
+        <arg name="fileName" len="100" type="string"/>
+      </args>
+    </command>
+    <command component="cmdSeq" mnemonic="CS_CANCEL" opcode="0x322">
+      <args/>
+    </command>
+    <command component="cmdSeq" mnemonic="CS_START" opcode="0x323">
+      <args/>
+    </command>
+    <command component="cmdSeq" mnemonic="CS_STEP" opcode="0x324">
+      <args/>
+    </command>
+    <command component="cmdSeq" mnemonic="CS_AUTO" opcode="0x325">
+      <args/>
+    </command>
+    <command component="cmdSeq" mnemonic="CS_MANUAL" opcode="0x326">
+      <args/>
+    </command>
+    <command component="fileDownlink" mnemonic="SendFile" opcode="0x1194">
+      <args>
+        <arg name="sourceFileName" len="100" type="string"/>
+        <arg name="destFileName" len="100" type="string"/>
+      </args>
+    </command>
+    <command component="fileDownlink" mnemonic="Cancel" opcode="0x1195">
+      <args/>
+    </command>
+    <command component="fileDownlink" mnemonic="SendPartial" opcode="0x1196">
+      <args>
+        <arg name="sourceFileName" len="100" type="string"/>
+        <arg name="destFileName" len="100" type="string"/>
+        <arg name="startOffset" type="U32"/>
+        <arg name="length" type="U32"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="CAPTURE" opcode="0x1770">
+      <args>
+        <arg name="destination" len="80" type="string"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="STOP" opcode="0x1771">
+      <args/>
+    </command>
+    <command component="cam" mnemonic="START" opcode="0x1772">
+      <args/>
+    </command>
+    <command component="cam" mnemonic="STREAM" opcode="0x1773">
+      <args>
+        <arg name="listener" type="Rpi::CamListener"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="FRAME_RATE_PRM_SET" opcode="0x177b" description="FRAME_RATE parameter set">
+      <args>
+        <arg name="val" type="U32"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="FRAME_RATE_PRM_SAVE" opcode="0x177c" description="FRAME_RATE parameter save"/>
+    <command component="cam" mnemonic="EXPOSURE_TIME_PRM_SET" opcode="0x177d" description="EXPOSURE_TIME parameter set">
+      <args>
+        <arg name="val" type="U32"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="EXPOSURE_TIME_PRM_SAVE" opcode="0x177e" description="EXPOSURE_TIME parameter save"/>
+    <command component="cam" mnemonic="GAIN_PRM_SET" opcode="0x177f" description="GAIN parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="GAIN_PRM_SAVE" opcode="0x1780" description="GAIN parameter save"/>
+    <command component="cam" mnemonic="METERING_MODE_PRM_SET" opcode="0x1781" description="METERING_MODE parameter set">
+      <args>
+        <arg name="val" type="Cam::METERING_MODE::MeteringMode"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="METERING_MODE_PRM_SAVE" opcode="0x1782" description="METERING_MODE parameter save"/>
+    <command component="cam" mnemonic="EXPOSURE_MODE_PRM_SET" opcode="0x1783" description="EXPOSURE_MODE parameter set">
+      <args>
+        <arg name="val" type="Cam::EXPOSURE_MODE::ExposureMode"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="EXPOSURE_MODE_PRM_SAVE" opcode="0x1784" description="EXPOSURE_MODE parameter save"/>
+    <command component="cam" mnemonic="AWB_PRM_SET" opcode="0x1785" description="AWB parameter set">
+      <args>
+        <arg name="val" type="Cam::AWB::AutoWhiteBalance"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="AWB_PRM_SAVE" opcode="0x1786" description="AWB parameter save"/>
+    <command component="cam" mnemonic="EV_PRM_SET" opcode="0x1787" description="EV parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="EV_PRM_SAVE" opcode="0x1788" description="EV parameter save"/>
+    <command component="cam" mnemonic="AWB_GAIN_R_PRM_SET" opcode="0x1789" description="AWB_GAIN_R parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="AWB_GAIN_R_PRM_SAVE" opcode="0x178a" description="AWB_GAIN_R parameter save"/>
+    <command component="cam" mnemonic="AWB_GAIN_B_PRM_SET" opcode="0x178b" description="AWB_GAIN_B parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="AWB_GAIN_B_PRM_SAVE" opcode="0x178c" description="AWB_GAIN_B parameter save"/>
+    <command component="cam" mnemonic="BRIGHTNESS_PRM_SET" opcode="0x178d" description="BRIGHTNESS parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="BRIGHTNESS_PRM_SAVE" opcode="0x178e" description="BRIGHTNESS parameter save"/>
+    <command component="cam" mnemonic="CONTRAST_PRM_SET" opcode="0x178f" description="CONTRAST parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="CONTRAST_PRM_SAVE" opcode="0x1790" description="CONTRAST parameter save"/>
+    <command component="cam" mnemonic="SATURATION_PRM_SET" opcode="0x1791" description="SATURATION parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="SATURATION_PRM_SAVE" opcode="0x1792" description="SATURATION parameter save"/>
+    <command component="cam" mnemonic="SHARPNESS_PRM_SET" opcode="0x1793" description="SHARPNESS parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="SHARPNESS_PRM_SAVE" opcode="0x1794" description="SHARPNESS parameter save"/>
+    <command component="cam" mnemonic="DENOISE_PRM_SET" opcode="0x1795" description="DENOISE parameter set">
+      <args>
+        <arg name="val" type="Cam::DENOISE::DenoiseAlgorithm"/>
+      </args>
+    </command>
+    <command component="cam" mnemonic="DENOISE_PRM_SAVE" opcode="0x1796" description="DENOISE parameter save"/>
+    <command component="mot" mnemonic="STEER" opcode="0x17d4">
+      <args>
+        <arg name="position" type="F64"/>
+      </args>
+    </command>
+    <command component="mot" mnemonic="THROTTLE" opcode="0x17d5">
+      <args>
+        <arg name="left" type="F64"/>
+        <arg name="right" type="F64"/>
+      </args>
+    </command>
+    <command component="videoStreamer" mnemonic="OPEN" opcode="0x1842">
+      <args/>
+    </command>
+    <command component="videoStreamer" mnemonic="DISPLAY" opcode="0x1843">
+      <args>
+        <arg name="where" type="VideoStreamer::where::DisplayLocation"/>
+      </args>
+    </command>
+    <command component="videoStreamer" mnemonic="CAPTURE" opcode="0x1844">
+      <args>
+        <arg name="destination" len="80" type="string"/>
+      </args>
+    </command>
+    <command component="videoStreamer" mnemonic="HOSTNAME_PRM_SET" opcode="0x1838" description="HOSTNAME parameter set">
+      <args>
+        <arg name="val" len="32" type="string"/>
+      </args>
+    </command>
+    <command component="videoStreamer" mnemonic="HOSTNAME_PRM_SAVE" opcode="0x1839" description="HOSTNAME parameter save"/>
+    <command component="videoStreamer" mnemonic="PORT_PRM_SET" opcode="0x183a" description="PORT parameter set">
+      <args>
+        <arg name="val" type="U16"/>
+      </args>
+    </command>
+    <command component="videoStreamer" mnemonic="PORT_PRM_SAVE" opcode="0x183b" description="PORT parameter save"/>
+    <command component="vis" mnemonic="STREAM" opcode="0x189c">
+      <args>
+        <arg name="listener" type="Rpi::VisListener"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="CLEAR" opcode="0x189d">
+      <args/>
+    </command>
+    <command component="vis" mnemonic="PIPE" opcode="0x189e">
+      <args>
+        <arg name="stage" type="Rpi::VisPipe"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="RECORD_FILE" opcode="0x189f">
+      <args>
+        <arg name="record_type" type="Vis::record_type::VisRecordType"/>
+        <arg name="frame_count" type="U32"/>
+        <arg name="filename" len="80" type="string"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="RECORD_WAIT" opcode="0x18a0">
+      <args/>
+    </command>
+    <command component="vis" mnemonic="MASK_QUAD" opcode="0x18a1">
+      <args>
+        <arg name="color" type="U8"/>
+        <arg name="c1x" type="F32"/>
+        <arg name="c1y" type="F32"/>
+        <arg name="c2x" type="F32"/>
+        <arg name="c2y" type="F32"/>
+        <arg name="c3x" type="F32"/>
+        <arg name="c3y" type="F32"/>
+        <arg name="c4x" type="F32"/>
+        <arg name="c4y" type="F32"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="POSE_CALIB_COL_PRM_SET" opcode="0x18a7" description="POSE_CALIB_COL parameter set">
+      <args>
+        <arg name="val" type="I32"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="POSE_CALIB_COL_PRM_SAVE" opcode="0x18a8" description="POSE_CALIB_COL parameter save"/>
+    <command component="vis" mnemonic="POSE_CALIB_ROW_PRM_SET" opcode="0x18a9" description="POSE_CALIB_ROW parameter set">
+      <args>
+        <arg name="val" type="I32"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="POSE_CALIB_ROW_PRM_SAVE" opcode="0x18aa" description="POSE_CALIB_ROW parameter save"/>
+    <command component="vis" mnemonic="CALIBRATION_PRM_SET" opcode="0x18ab" description="CALIBRATION parameter set">
+      <args>
+        <arg name="val" len="40" type="string"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="CALIBRATION_PRM_SAVE" opcode="0x18ac" description="CALIBRATION parameter save"/>
+    <command component="vis" mnemonic="OTSU_FRAMES_PRM_SET" opcode="0x18ad" description="OTSU_FRAMES parameter set">
+      <args>
+        <arg name="val" type="U32"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="OTSU_FRAMES_PRM_SAVE" opcode="0x18ae" description="OTSU_FRAMES parameter save"/>
+    <command component="vis" mnemonic="GAUSSIAN_SIGMA_PRM_SET" opcode="0x18af" description="GAUSSIAN_SIGMA parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="GAUSSIAN_SIGMA_PRM_SAVE" opcode="0x18b0" description="GAUSSIAN_SIGMA parameter save"/>
+    <command component="vis" mnemonic="WARP_CALIBRATION_PRM_SET" opcode="0x18b1" description="WARP_CALIBRATION parameter set">
+      <args>
+        <arg name="val" len="40" type="string"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="WARP_CALIBRATION_PRM_SAVE" opcode="0x18b2" description="WARP_CALIBRATION parameter save"/>
+    <command component="vis" mnemonic="DOWNSCALE_PRM_SET" opcode="0x18b3" description="DOWNSCALE parameter set">
+      <args>
+        <arg name="val" type="I32"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="DOWNSCALE_PRM_SAVE" opcode="0x18b4" description="DOWNSCALE parameter save"/>
+    <command component="vis" mnemonic="INTERPOLATION_PRM_SET" opcode="0x18b5" description="INTERPOLATION parameter set">
+      <args>
+        <arg name="val" type="Rpi::VisInterpolation"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="INTERPOLATION_PRM_SAVE" opcode="0x18b6" description="INTERPOLATION parameter save"/>
+    <command component="vis" mnemonic="WARP_SCALE_X_PRM_SET" opcode="0x18b7" description="WARP_SCALE_X parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="WARP_SCALE_X_PRM_SAVE" opcode="0x18b8" description="WARP_SCALE_X parameter save"/>
+    <command component="vis" mnemonic="WARP_SCALE_Y_PRM_SET" opcode="0x18b9" description="WARP_SCALE_Y parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="WARP_SCALE_Y_PRM_SAVE" opcode="0x18ba" description="WARP_SCALE_Y parameter save"/>
+    <command component="vis" mnemonic="WARP_TRANSLATE_X_PRM_SET" opcode="0x18bb" description="WARP_TRANSLATE_X parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="WARP_TRANSLATE_X_PRM_SAVE" opcode="0x18bc" description="WARP_TRANSLATE_X parameter save"/>
+    <command component="vis" mnemonic="WARP_TRANSLATE_Y_PRM_SET" opcode="0x18bd" description="WARP_TRANSLATE_Y parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="vis" mnemonic="WARP_TRANSLATE_Y_PRM_SAVE" opcode="0x18be" description="WARP_TRANSLATE_Y parameter save"/>
+    <command component="nav" mnemonic="RUN" opcode="0x1900">
+      <args>
+        <arg name="algorithm" type="Rpi::NavAlgorithmType"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="STOP" opcode="0x1901">
+      <args/>
+    </command>
+    <command component="nav" mnemonic="SCAN_ROW_PRM_SET" opcode="0x190b" description="SCAN_ROW parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="SCAN_ROW_PRM_SAVE" opcode="0x190c" description="SCAN_ROW parameter save"/>
+    <command component="nav" mnemonic="SCAN_STEP_PRM_SET" opcode="0x190d" description="SCAN_STEP parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="SCAN_STEP_PRM_SAVE" opcode="0x190e" description="SCAN_STEP parameter save"/>
+    <command component="nav" mnemonic="SCAN_DISCONTINUITY_THRESH_1_PRM_SET" opcode="0x190f" description="SCAN_DISCONTINUITY_THRESH_1 parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="SCAN_DISCONTINUITY_THRESH_1_PRM_SAVE" opcode="0x1910" description="SCAN_DISCONTINUITY_THRESH_1 parameter save"/>
+    <command component="nav" mnemonic="SCAN_DISCONTINUITY_THRESH_2_PRM_SET" opcode="0x1911" description="SCAN_DISCONTINUITY_THRESH_2 parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="SCAN_DISCONTINUITY_THRESH_2_PRM_SAVE" opcode="0x1912" description="SCAN_DISCONTINUITY_THRESH_2 parameter save"/>
+    <command component="nav" mnemonic="PID_P_PRM_SET" opcode="0x1915" description="PID_P parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="PID_P_PRM_SAVE" opcode="0x1916" description="PID_P parameter save"/>
+    <command component="nav" mnemonic="PID_I_PRM_SET" opcode="0x1917" description="PID_I parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="PID_I_PRM_SAVE" opcode="0x1918" description="PID_I parameter save"/>
+    <command component="nav" mnemonic="PID_D_PRM_SET" opcode="0x1919" description="PID_D parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="PID_D_PRM_SAVE" opcode="0x191a" description="PID_D parameter save"/>
+    <command component="nav" mnemonic="PID_T_PRM_SET" opcode="0x191b" description="PID_T parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="PID_T_PRM_SAVE" opcode="0x191c" description="PID_T parameter save"/>
+    <command component="nav" mnemonic="PID_STEERING_TIME_PRM_SET" opcode="0x191d" description="PID_STEERING_TIME parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="PID_STEERING_TIME_PRM_SAVE" opcode="0x191e" description="PID_STEERING_TIME parameter save"/>
+    <command component="nav" mnemonic="PID_THROTTLE_TIME_PRM_SET" opcode="0x191f" description="PID_THROTTLE_TIME parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="PID_THROTTLE_TIME_PRM_SAVE" opcode="0x1920" description="PID_THROTTLE_TIME parameter save"/>
+    <command component="nav" mnemonic="CONTOUR_RHO_PRM_SET" opcode="0x1921" description="CONTOUR_RHO parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="CONTOUR_RHO_PRM_SAVE" opcode="0x1922" description="CONTOUR_RHO parameter save"/>
+    <command component="nav" mnemonic="CONTOUR_THETA_PRM_SET" opcode="0x1923" description="CONTOUR_THETA parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="CONTOUR_THETA_PRM_SAVE" opcode="0x1924" description="CONTOUR_THETA parameter save"/>
+    <command component="nav" mnemonic="CONTOUR_THRESHOLD_PRM_SET" opcode="0x1925" description="CONTOUR_THRESHOLD parameter set">
+      <args>
+        <arg name="val" type="I32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="CONTOUR_THRESHOLD_PRM_SAVE" opcode="0x1926" description="CONTOUR_THRESHOLD parameter save"/>
+    <command component="nav" mnemonic="CONTOUR_MIN_LINE_LENGTH_PRM_SET" opcode="0x1927" description="CONTOUR_MIN_LINE_LENGTH parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="CONTOUR_MIN_LINE_LENGTH_PRM_SAVE" opcode="0x1928" description="CONTOUR_MIN_LINE_LENGTH parameter save"/>
+    <command component="nav" mnemonic="CONTOUR_MAX_LINE_GAP_PRM_SET" opcode="0x1929" description="CONTOUR_MAX_LINE_GAP parameter set">
+      <args>
+        <arg name="val" type="F32"/>
+      </args>
+    </command>
+    <command component="nav" mnemonic="CONTOUR_MAX_LINE_GAP_PRM_SAVE" opcode="0x192a" description="CONTOUR_MAX_LINE_GAP parameter save"/>
+    <command component="display" mnemonic="WRITE" opcode="0x19c8">
+      <args>
+        <arg name="line_number" type="U32"/>
+        <arg name="text" len="16" type="string"/>
+      </args>
+    </command>
+  </commands>
+  <events>
+    <event component="eventLogger" name="SEVERITY_FILTER_STATE" id="0x12c" severity="ACTIVITY_LO" format_string="%s filter state. %d">
+      <args>
+        <arg name="severity" type="ActiveLogger::severity::EventFilterState"/>
+        <arg name="enabled" type="bool"/>
+      </args>
+    </event>
+    <event component="eventLogger" name="ID_FILTER_ENABLED" id="0x12d" severity="ACTIVITY_HI" format_string="ID %d is filtered.">
+      <args>
+        <arg name="ID" type="U32"/>
+      </args>
+    </event>
+    <event component="eventLogger" name="ID_FILTER_LIST_FULL" id="0x12e" severity="WARNING_LO" format_string="ID filter list is full. Cannot filter %d .">
+      <args>
+        <arg name="ID" type="U32"/>
+      </args>
+    </event>
+    <event component="eventLogger" name="ID_FILTER_REMOVED" id="0x12f" severity="ACTIVITY_HI" format_string="ID filter ID %d removed.">
+      <args>
+        <arg name="ID" type="U32"/>
+      </args>
+    </event>
+    <event component="eventLogger" name="ID_FILTER_NOT_FOUND" id="0x130" severity="WARNING_LO" format_string="ID filter ID %d not found.">
+      <args>
+        <arg name="ID" type="U32"/>
+      </args>
+    </event>
+    <event component="cmdDisp" name="OpCodeRegistered" id="0x190" severity="DIAGNOSTIC" format_string="Opcode 0x%04X registered to port %d slot %d">
+      <args>
+        <arg name="Opcode" type="U32"/>
+        <arg name="port" type="I32"/>
+        <arg name="slot" type="I32"/>
+      </args>
+    </event>
+    <event component="cmdDisp" name="OpCodeDispatched" id="0x191" severity="COMMAND" format_string="Opcode 0x%04X dispatched to port %d">
+      <args>
+        <arg name="Opcode" type="U32"/>
+        <arg name="port" type="I32"/>
+      </args>
+    </event>
+    <event component="cmdDisp" name="OpCodeCompleted" id="0x192" severity="COMMAND" format_string="Opcode 0x%04X completed">
+      <args>
+        <arg name="Opcode" type="U32"/>
+      </args>
+    </event>
+    <event component="cmdDisp" name="OpCodeError" id="0x193" severity="WARNING_HI" format_string="Opcode 0x%04X completed with error %s ">
+      <args>
+        <arg name="Opcode" type="U32"/>
+        <arg name="error" type="CommandDispatcher::error::ErrorResponse"/>
+      </args>
+    </event>
+    <event component="cmdDisp" name="MalformedCommand" id="0x194" severity="WARNING_HI" format_string="Received malformed command packet. Status: %s">
+      <args>
+        <arg name="Status" type="CommandDispatcher::Status::CmdSerError"/>
+      </args>
+    </event>
+    <event component="cmdDisp" name="InvalidCommand" id="0x195" severity="WARNING_HI" format_string="Invalid opcode 0x%04X received.">
+      <args>
+        <arg name="Opcode" type="U32"/>
+      </args>
+    </event>
+    <event component="cmdDisp" name="TooManyCommands" id="0x196" severity="WARNING_HI" format_string="Too many outstanding commands. opcode=0x%04X">
+      <args>
+        <arg name="Opcode" type="U32"/>
+      </args>
+    </event>
+    <event component="cmdDisp" name="NoOpReceived" id="0x197" severity="ACTIVITY_HI" format_string="Received a NO-OP command">
+      <args/>
+    </event>
+    <event component="cmdDisp" name="NoOpStringReceived" id="0x198" severity="ACTIVITY_HI" format_string="Received a NO-OP string=%s">
+      <args>
+        <arg name="message" len="40" type="string"/>
+      </args>
+    </event>
+    <event component="cmdDisp" name="TestCmd1Args" id="0x199" severity="ACTIVITY_HI" format_string="TEST_CMD_1 args: I32: %d, F32: %f, U8: %d">
+      <args>
+        <arg name="arg1" type="I32"/>
+        <arg name="arg2" type="F32"/>
+        <arg name="arg3" type="U8"/>
+      </args>
+    </event>
+    <event component="cmdDisp" name="OpCodeReregistered" id="0x19a" severity="DIAGNOSTIC" format_string="Opcode 0x%04X is already registered to port %d">
+      <args>
+        <arg name="Opcode" type="U32"/>
+        <arg name="port" type="I32"/>
+      </args>
+    </event>
+    <event component="prmDb" name="PrmIdNotFound" id="0x258" severity="WARNING_LO" format_string="Parameter ID 0x%08X not found">
+      <args>
+        <arg name="Id" type="U32"/>
+      </args>
+    </event>
+    <event component="prmDb" name="PrmIdUpdated" id="0x259" severity="ACTIVITY_HI" format_string="Parameter ID 0x%08X updated">
+      <args>
+        <arg name="Id" type="U32"/>
+      </args>
+    </event>
+    <event component="prmDb" name="PrmDbFull" id="0x25a" severity="FATAL" format_string="Parameter DB full when adding ID 0x%08X">
+      <args>
+        <arg name="Id" type="U32"/>
+      </args>
+    </event>
+    <event component="prmDb" name="PrmIdAdded" id="0x25b" severity="ACTIVITY_HI" format_string="Parameter ID 0x%08X added">
+      <args>
+        <arg name="Id" type="U32"/>
+      </args>
+    </event>
+    <event component="prmDb" name="PrmFileWriteError" id="0x25c" severity="WARNING_HI" format_string="Parameter write failed in stage %s with record %d and error %d">
+      <args>
+        <arg name="stage" type="PrmDb::stage::PrmWriteError"/>
+        <arg name="record" type="I32"/>
+        <arg name="error" type="I32"/>
+      </args>
+    </event>
+    <event component="prmDb" name="PrmFileSaveComplete" id="0x25d" severity="ACTIVITY_HI" format_string="Parameter file save completed. Wrote %d records.">
+      <args>
+        <arg name="records" type="U32"/>
+      </args>
+    </event>
+    <event component="prmDb" name="PrmFileReadError" id="0x25e" severity="WARNING_HI" format_string="Parameter file read failed in stage %s with record %d and error %d">
+      <args>
+        <arg name="stage" type="PrmDb::stage::PrmReadError"/>
+        <arg name="record" type="I32"/>
+        <arg name="error" type="I32"/>
+      </args>
+    </event>
+    <event component="prmDb" name="PrmFileLoadComplete" id="0x25f" severity="ACTIVITY_HI" format_string="Parameter file load completed. Read %d records.">
+      <args>
+        <arg name="records" type="U32"/>
+      </args>
+    </event>
+    <event component="fileManager" name="DirectoryCreateError" id="0x2bc" severity="WARNING_HI" format_string="Could not create directory %s, returned status %d">
+      <args>
+        <arg name="dirName" len="256" type="string"/>
+        <arg name="status" type="U32"/>
+      </args>
+    </event>
+    <event component="fileManager" name="DirectoryRemoveError" id="0x2bd" severity="WARNING_HI" format_string="Could not remove directory %s, returned status %d">
+      <args>
+        <arg name="dirName" len="256" type="string"/>
+        <arg name="status" type="U32"/>
+      </args>
+    </event>
+    <event component="fileManager" name="FileMoveError" id="0x2be" severity="WARNING_HI" format_string="Could not move file %s to file %s, returned status %d">
+      <args>
+        <arg name="sourceFileName" len="256" type="string"/>
+        <arg name="destFileName" len="256" type="string"/>
+        <arg name="status" type="U32"/>
+      </args>
+    </event>
+    <event component="fileManager" name="FileRemoveError" id="0x2bf" severity="WARNING_HI" format_string="Could not remove file %s, returned status %d">
+      <args>
+        <arg name="fileName" len="256" type="string"/>
+        <arg name="status" type="U32"/>
+      </args>
+    </event>
+    <event component="fileManager" name="ShellCommandFailed" id="0x2c0" severity="WARNING_HI" format_string="Shell command %s failed with status %d">
+      <args>
+        <arg name="command" len="256" type="string"/>
+        <arg name="status" type="U32"/>
+      </args>
+    </event>
+    <event component="fileManager" name="AppendFileFailed" id="0x2c1" severity="WARNING_HI" format_string="Appending %s onto %s failed with status %d">
+      <args>
+        <arg name="source" len="256" type="string"/>
+        <arg name="target" len="256" type="string"/>
+        <arg name="status" type="U32"/>
+      </args>
+    </event>
+    <event component="fileManager" name="AppendFileSucceeded" id="0x2c2" severity="ACTIVITY_HI" format_string="Appended %s to the end of %s">
+      <args>
+        <arg name="source" len="256" type="string"/>
+        <arg name="target" len="256" type="string"/>
+      </args>
+    </event>
+    <event component="fileManager" name="ShellCommandSucceeded" id="0x2c3" severity="ACTIVITY_HI" format_string="Shell command %s succeeded">
+      <args>
+        <arg name="command" len="256" type="string"/>
+      </args>
+    </event>
+    <event component="fileManager" name="CreateDirectorySucceeded" id="0x2c4" severity="ACTIVITY_HI" format_string="Created directory %s successfully">
+      <args>
+        <arg name="dirName" len="256" type="string"/>
+      </args>
+    </event>
+    <event component="fileManager" name="RemoveDirectorySucceeded" id="0x2c5" severity="ACTIVITY_HI" format_string="Removed directory %s successfully">
+      <args>
+        <arg name="dirName" len="256" type="string"/>
+      </args>
+    </event>
+    <event component="fileManager" name="MoveFileSucceeded" id="0x2c6" severity="ACTIVITY_HI" format_string="Moved file %s to file %s successfully">
+      <args>
+        <arg name="sourceFileName" len="256" type="string"/>
+        <arg name="destFileName" len="256" type="string"/>
+      </args>
+    </event>
+    <event component="fileManager" name="RemoveFileSucceeded" id="0x2c7" severity="ACTIVITY_HI" format_string="Removed file %s successfully">
+      <args>
+        <arg name="fileName" len="256" type="string"/>
+      </args>
+    </event>
+    <event component="fileManager" name="AppendFileStarted" id="0x2c8" severity="ACTIVITY_HI" format_string="Appending file %s to the end of %s...">
+      <args>
+        <arg name="source" len="256" type="string"/>
+        <arg name="target" len="256" type="string"/>
+      </args>
+    </event>
+    <event component="fileManager" name="ShellCommandStarted" id="0x2c9" severity="ACTIVITY_HI" format_string="Running shell command %s...">
+      <args>
+        <arg name="command" len="256" type="string"/>
+      </args>
+    </event>
+    <event component="fileManager" name="CreateDirectoryStarted" id="0x2ca" severity="ACTIVITY_HI" format_string="Creating directory %s...">
+      <args>
+        <arg name="dirName" len="256" type="string"/>
+      </args>
+    </event>
+    <event component="fileManager" name="RemoveDirectoryStarted" id="0x2cb" severity="ACTIVITY_HI" format_string="Removing directory %s...">
+      <args>
+        <arg name="dirName" len="256" type="string"/>
+      </args>
+    </event>
+    <event component="fileManager" name="MoveFileStarted" id="0x2cc" severity="ACTIVITY_HI" format_string="Moving file %s to file %s...">
+      <args>
+        <arg name="sourceFileName" len="256" type="string"/>
+        <arg name="destFileName" len="256" type="string"/>
+      </args>
+    </event>
+    <event component="fileManager" name="RemoveFileStarted" id="0x2cd" severity="ACTIVITY_HI" format_string="Removing file %s...">
+      <args>
+        <arg name="fileName" len="256" type="string"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_SequenceLoaded" id="0x320" severity="ACTIVITY_LO" format_string="Loaded sequence %s">
+      <args>
+        <arg name="fileName" len="60" type="string"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_SequenceCanceled" id="0x321" severity="ACTIVITY_HI" format_string="Sequence file %s canceled">
+      <args>
+        <arg name="fileName" len="60" type="string"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_FileReadError" id="0x322" severity="WARNING_HI" format_string="Error reading sequence file %s">
+      <args>
+        <arg name="fileName" len="60" type="string"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_FileInvalid" id="0x323" severity="WARNING_HI" format_string="Sequence file %s invalid. Stage: %s Error: %d">
+      <args>
+        <arg name="fileName" len="60" type="string"/>
+        <arg name="stage" type="CmdSequencer::stage::FileReadStage"/>
+        <arg name="error" type="I32"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_RecordInvalid" id="0x324" severity="WARNING_HI" format_string="Sequence file %s: Record %d invalid. Err: %d">
+      <args>
+        <arg name="fileName" len="60" type="string"/>
+        <arg name="recordNumber" type="U32"/>
+        <arg name="error" type="I32"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_FileSizeError" id="0x325" severity="WARNING_HI" format_string="Sequence file %s too large. Size: %d">
+      <args>
+        <arg name="fileName" len="60" type="string"/>
+        <arg name="size" type="U32"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_FileNotFound" id="0x326" severity="WARNING_HI" format_string="Sequence file %s not found.">
+      <args>
+        <arg name="fileName" len="60" type="string"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_FileCrcFailure" id="0x327" severity="WARNING_HI" format_string="Sequence file %s had invalid CRC. Stored 0x%08X, Computed 0x%08X.">
+      <args>
+        <arg name="fileName" len="60" type="string"/>
+        <arg name="storedCRC" type="U32"/>
+        <arg name="computedCRC" type="U32"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_CommandComplete" id="0x328" severity="ACTIVITY_LO" format_string="Sequence file %s: Command %d (opcode %d) complete">
+      <args>
+        <arg name="fileName" len="60" type="string"/>
+        <arg name="recordNumber" type="U32"/>
+        <arg name="opCode" type="U32"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_SequenceComplete" id="0x329" severity="ACTIVITY_HI" format_string="Sequence file %s complete">
+      <args>
+        <arg name="fileName" len="60" type="string"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_CommandError" id="0x32a" severity="WARNING_HI" format_string="Sequence file %s: Command %d (opcode %d) completed with error %d">
+      <args>
+        <arg name="fileName" len="60" type="string"/>
+        <arg name="recordNumber" type="U32"/>
+        <arg name="opCode" type="U32"/>
+        <arg name="errorStatus" type="U32"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_InvalidMode" id="0x32b" severity="WARNING_HI" format_string="Invalid mode">
+      <args/>
+    </event>
+    <event component="cmdSeq" name="CS_RecordMismatch" id="0x32c" severity="WARNING_HI" format_string="Sequence file %s header records mismatch: %d in header, found %d extra bytes.">
+      <args>
+        <arg name="fileName" len="60" type="string"/>
+        <arg name="header_records" type="U32"/>
+        <arg name="extra_bytes" type="U32"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_TimeBaseMismatch" id="0x32d" severity="WARNING_HI" format_string="Sequence file %s: Current time base doesn't match sequence time: base: %d seq: %d">
+      <args>
+        <arg name="fileName" len="60" type="string"/>
+        <arg name="time_base" type="U16"/>
+        <arg name="seq_time_base" type="U16"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_TimeContextMismatch" id="0x32e" severity="WARNING_HI" format_string="Sequence file %s: Current time context doesn't match sequence context: base: %d seq: %d">
+      <args>
+        <arg name="fileName" len="60" type="string"/>
+        <arg name="currTimeBase" type="U8"/>
+        <arg name="seqTimeBase" type="U8"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_PortSequenceStarted" id="0x32f" severity="ACTIVITY_HI" format_string="Local request for sequence %s started.">
+      <args>
+        <arg name="filename" len="60" type="string"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_UnexpectedCompletion" id="0x330" severity="WARNING_HI" format_string="Command complete status received while no sequences active. Opcode: %d">
+      <args>
+        <arg name="opcode" type="U32"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_ModeSwitched" id="0x331" severity="ACTIVITY_HI" format_string="Sequencer switched to %s step mode">
+      <args>
+        <arg name="mode" type="CmdSequencer::mode::SeqMode"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_NoSequenceActive" id="0x332" severity="WARNING_LO" format_string="No sequence active.">
+      <args/>
+    </event>
+    <event component="cmdSeq" name="CS_SequenceValid" id="0x333" severity="ACTIVITY_HI" format_string="Sequence %s is valid.">
+      <args>
+        <arg name="filename" len="60" type="string"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_SequenceTimeout" id="0x334" severity="WARNING_HI" format_string="Sequence %s timed out on command %d">
+      <args>
+        <arg name="filename" len="60" type="string"/>
+        <arg name="command" type="U32"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_CmdStepped" id="0x335" severity="ACTIVITY_HI" format_string="Sequence %s command %d stepped">
+      <args>
+        <arg name="filename" len="60" type="string"/>
+        <arg name="command" type="U32"/>
+      </args>
+    </event>
+    <event component="cmdSeq" name="CS_CmdStarted" id="0x336" severity="ACTIVITY_HI" format_string="Sequence %s started">
+      <args>
+        <arg name="filename" len="60" type="string"/>
+      </args>
+    </event>
+    <event component="rg1hz" name="RateGroupStarted" id="0x4b0" severity="DIAGNOSTIC" format_string="Rate group started.">
+      <args/>
+    </event>
+    <event component="rg1hz" name="RateGroupCycleSlip" id="0x4b1" severity="WARNING_HI" format_string="Rate group cycle slipped on cycle %d">
+      <args>
+        <arg name="cycle" type="U32"/>
+      </args>
+    </event>
+    <event component="rg10hz" name="RateGroupStarted" id="0x514" severity="DIAGNOSTIC" format_string="Rate group started.">
+      <args/>
+    </event>
+    <event component="rg10hz" name="RateGroupCycleSlip" id="0x515" severity="WARNING_HI" format_string="Rate group cycle slipped on cycle %d">
+      <args>
+        <arg name="cycle" type="U32"/>
+      </args>
+    </event>
+    <event component="rg20hz" name="RateGroupStarted" id="0x578" severity="DIAGNOSTIC" format_string="Rate group started.">
+      <args/>
+    </event>
+    <event component="rg20hz" name="RateGroupCycleSlip" id="0x579" severity="WARNING_HI" format_string="Rate group cycle slipped on cycle %d">
+      <args>
+        <arg name="cycle" type="U32"/>
+      </args>
+    </event>
+    <event component="rg50hz" name="RateGroupStarted" id="0x5dc" severity="DIAGNOSTIC" format_string="Rate group started.">
+      <args/>
+    </event>
+    <event component="rg50hz" name="RateGroupCycleSlip" id="0x5dd" severity="WARNING_HI" format_string="Rate group cycle slipped on cycle %d">
+      <args>
+        <arg name="cycle" type="U32"/>
+      </args>
+    </event>
+    <event component="fileUplink" name="BadChecksum" id="0x10cc" severity="WARNING_HI" format_string="Bad checksum value during receipt of file %s: computed 0x%08X, read 0x%08X">
+      <args>
+        <arg name="fileName" len="40" type="string"/>
+        <arg name="computed" type="U32"/>
+        <arg name="read" type="U32"/>
+      </args>
+    </event>
+    <event component="fileUplink" name="FileOpenError" id="0x10cd" severity="WARNING_HI" format_string="Could not open file %s">
+      <args>
+        <arg name="fileName" len="40" type="string"/>
+      </args>
+    </event>
+    <event component="fileUplink" name="FileReceived" id="0x10ce" severity="ACTIVITY_HI" format_string="Received file %s">
+      <args>
+        <arg name="fileName" len="40" type="string"/>
+      </args>
+    </event>
+    <event component="fileUplink" name="FileWriteError" id="0x10cf" severity="WARNING_HI" format_string="Could not write to file %s">
+      <args>
+        <arg name="fileName" len="40" type="string"/>
+      </args>
+    </event>
+    <event component="fileUplink" name="InvalidReceiveMode" id="0x10d0" severity="WARNING_HI" format_string="Packet type %u received in mode %u">
+      <args>
+        <arg name="packetType" type="U32"/>
+        <arg name="mode" type="U32"/>
+      </args>
+    </event>
+    <event component="fileUplink" name="PacketOutOfBounds" id="0x10d1" severity="WARNING_HI" format_string="Packet %u out of bounds for file %s">
+      <args>
+        <arg name="packetIndex" type="U32"/>
+        <arg name="fileName" len="40" type="string"/>
+      </args>
+    </event>
+    <event component="fileUplink" name="PacketOutOfOrder" id="0x10d2" severity="WARNING_HI" format_string="Received packet %u after packet %u">
+      <args>
+        <arg name="packetIndex" type="U32"/>
+        <arg name="lastPacketIndex" type="U32"/>
+      </args>
+    </event>
+    <event component="fileUplink" name="UplinkCanceled" id="0x10d3" severity="ACTIVITY_HI" format_string="Received CANCEL packet">
+      <args/>
+    </event>
+    <event component="fileUplink" name="DecodeError" id="0x10d4" severity="WARNING_HI" format_string="Unable to decode file packet. Status: %d">
+      <args>
+        <arg name="status" type="I32"/>
+      </args>
+    </event>
+    <event component="fileUplinkBufferManager" name="NoBuffsAvailable" id="0x1130" severity="WARNING_HI" format_string="No available buffers of size %d">
+      <args>
+        <arg name="size" type="U32"/>
+      </args>
+    </event>
+    <event component="fileUplinkBufferManager" name="ZeroSizeBuffer" id="0x1131" severity="WARNING_HI" format_string="Received zero size buffer">
+      <args/>
+    </event>
+    <event component="fileDownlink" name="FileOpenError" id="0x1194" severity="WARNING_HI" format_string="Could not open file %s">
+      <args>
+        <arg name="fileName" len="100" type="string"/>
+      </args>
+    </event>
+    <event component="fileDownlink" name="FileReadError" id="0x1195" severity="WARNING_HI" format_string="Could not read file %s with status %d">
+      <args>
+        <arg name="fileName" len="100" type="string"/>
+        <arg name="status" type="I32"/>
+      </args>
+    </event>
+    <event component="fileDownlink" name="FileSent" id="0x1196" severity="ACTIVITY_HI" format_string="Sent file %s to file %s">
+      <args>
+        <arg name="sourceFileName" len="100" type="string"/>
+        <arg name="destFileName" len="100" type="string"/>
+      </args>
+    </event>
+    <event component="fileDownlink" name="DownlinkCanceled" id="0x1197" severity="ACTIVITY_HI" format_string="Canceled downlink of file %s to file %s">
+      <args>
+        <arg name="sourceFileName" len="100" type="string"/>
+        <arg name="destFileName" len="100" type="string"/>
+      </args>
+    </event>
+    <event component="fileDownlink" name="DownlinkTimeout" id="0x1198" severity="WARNING_HI" format_string="Timeout occurred during downlink of file %s to file %s. Downlink has been canceled.">
+      <args>
+        <arg name="sourceFileName" len="100" type="string"/>
+        <arg name="destFileName" len="100" type="string"/>
+      </args>
+    </event>
+    <event component="fileDownlink" name="DownlinkPartialWarning" id="0x1199" severity="WARNING_LO" format_string="Offset %d plus length %d is greater than source size %d for partial downlink of file %s to file %s. ">
+      <args>
+        <arg name="startOffset" type="U32"/>
+        <arg name="length" type="U32"/>
+        <arg name="filesize" type="U32"/>
+        <arg name="sourceFileName" len="100" type="string"/>
+        <arg name="destFileName" len="100" type="string"/>
+      </args>
+    </event>
+    <event component="fileDownlink" name="DownlinkPartialFail" id="0x119a" severity="WARNING_HI" format_string="Error occurred during partial downlink of file %s to file %s. Offset %d greater than or equal to source filesize %d.">
+      <args>
+        <arg name="sourceFileName" len="100" type="string"/>
+        <arg name="destFileName" len="100" type="string"/>
+        <arg name="startOffset" type="U32"/>
+        <arg name="filesize" type="U32"/>
+      </args>
+    </event>
+    <event component="fileDownlink" name="SendDataFail" id="0x119b" severity="WARNING_HI" format_string="Failed to send data packet from file %s at byte offset %d.">
+      <args>
+        <arg name="sourceFileName" len="100" type="string"/>
+        <arg name="byteOffset" type="U32"/>
+      </args>
+    </event>
+    <event component="fileDownlink" name="SendStarted" id="0x119c" severity="ACTIVITY_HI" format_string="Downlink of %d bytes started from %s to %s">
+      <args>
+        <arg name="fileSize" type="U32"/>
+        <arg name="sourceFileName" len="100" type="string"/>
+        <arg name="destFileName" len="100" type="string"/>
+      </args>
+    </event>
+    <event component="serialDriver" name="DR_OpenError" id="0x13ec" severity="WARNING_HI" format_string="Error opening UART device %s: %d %s">
+      <args>
+        <arg name="device" len="40" type="string"/>
+        <arg name="error" type="I32"/>
+        <arg name="name" len="40" type="string"/>
+      </args>
+    </event>
+    <event component="serialDriver" name="DR_ConfigError" id="0x13ed" severity="WARNING_HI" format_string="Error configuring UART device %s: %d">
+      <args>
+        <arg name="device" len="40" type="string"/>
+        <arg name="error" type="I32"/>
+      </args>
+    </event>
+    <event component="serialDriver" name="DR_WriteError" id="0x13ee" severity="WARNING_HI" format_string="Error writing UART device %s: %d">
+      <args>
+        <arg name="device" len="40" type="string"/>
+        <arg name="error" type="I32"/>
+      </args>
+    </event>
+    <event component="serialDriver" name="DR_ReadError" id="0x13ef" severity="WARNING_HI" format_string="Error reading UART device %s: %d">
+      <args>
+        <arg name="device" len="40" type="string"/>
+        <arg name="error" type="I32"/>
+      </args>
+    </event>
+    <event component="serialDriver" name="DR_PortOpened" id="0x13f0" severity="ACTIVITY_HI" format_string="UART Device %s configured">
+      <args>
+        <arg name="device" len="40" type="string"/>
+      </args>
+    </event>
+    <event component="serialDriver" name="DR_NoBuffers" id="0x13f1" severity="WARNING_HI" format_string="UART Device %s ran out of buffers">
+      <args>
+        <arg name="device" len="40" type="string"/>
+      </args>
+    </event>
+    <event component="serialDriver" name="DR_BufferTooSmall" id="0x13f2" severity="WARNING_HI" format_string="UART Device %s target buffer too small. Size: %d Needs: %d">
+      <args>
+        <arg name="device" len="40" type="string"/>
+        <arg name="size" type="U32"/>
+        <arg name="needed" type="U32"/>
+      </args>
+    </event>
+    <event component="cam" name="CaptureFailed" id="0x1770" severity="WARNING_LO" format_string="Camera capture failed, dropping frame">
+      <args/>
+    </event>
+    <event component="cam" name="ImageSaving" id="0x1771" severity="ACTIVITY_LO" format_string="Saving image to file %s">
+      <args>
+        <arg name="destination" len="80" type="string"/>
+      </args>
+    </event>
+    <event component="cam" name="CameraStarting" id="0x1772" severity="ACTIVITY_LO" format_string="Camera is starting">
+      <args/>
+    </event>
+    <event component="cam" name="CameraStopping" id="0x1773" severity="ACTIVITY_LO" format_string="Camera is stopping">
+      <args/>
+    </event>
+    <event component="cam" name="CameraConfiguring" id="0x1774" severity="ACTIVITY_LO" format_string="Configuration sending to camera">
+      <args/>
+    </event>
+    <event component="cam" name="CameraStreamStarting" id="0x1775" severity="ACTIVITY_LO" format_string="Camera is now streaming to %s">
+      <args>
+        <arg name="port_number" type="Rpi::CamListener"/>
+      </args>
+    </event>
+    <event component="cam" name="CameraStreamStopping" id="0x1776" severity="ACTIVITY_LO" format_string="Camera stopped streaming to %s">
+      <args>
+        <arg name="port_number" type="Rpi::CamListener"/>
+      </args>
+    </event>
+    <event component="mot" name="MotSteerOutOfRange" id="0x17d4" severity="WARNING_HI" format_string="Steering input out of range %f">
+      <args>
+        <arg name="input" type="F64"/>
+      </args>
+    </event>
+    <event component="mot" name="MotThrottleOutOfRange" id="0x17d5" severity="WARNING_HI" format_string="Throttle input out of range left=%f right=%f">
+      <args>
+        <arg name="input_left" type="F64"/>
+        <arg name="input_right" type="F64"/>
+      </args>
+    </event>
+    <event component="mot" name="MotI2cFailure" id="0x17d6" severity="WARNING_HI" format_string="Failed to command MSP432 via I2C opcode=%s, error: %s">
+      <args>
+        <arg name="opcode" type="Rpi::MSP432PwmOpcode"/>
+        <arg name="error" type="Drv::I2cStatus"/>
+      </args>
+    </event>
+    <event component="videoStreamer" name="ImageCaptured" id="0x1839" severity="ACTIVITY_HI" format_string="Image frame has been saved to %s">
+      <args>
+        <arg name="filename" len="80" type="string"/>
+      </args>
+    </event>
+    <event component="videoStreamer" name="ImageCaptureEncodeFailed" id="0x183a" severity="WARNING_HI" format_string="Failed to encode image frame: %s">
+      <args>
+        <arg name="error" len="80" type="string"/>
+      </args>
+    </event>
+    <event component="videoStreamer" name="ImageCaptureSaveFailed" id="0x183b" severity="WARNING_HI" format_string="Failed to save image frame to %s">
+      <args>
+        <arg name="filename" len="80" type="string"/>
+      </args>
+    </event>
+    <event component="vis" name="VisStreaming" id="0x189c" severity="ACTIVITY_LO" format_string="Vision is now streaming to %s">
+      <args>
+        <arg name="port_number" type="Rpi::VisListener"/>
+      </args>
+    </event>
+    <event component="vis" name="VisStopping" id="0x189d" severity="ACTIVITY_LO" format_string="Vision stopped streaming to %s">
+      <args>
+        <arg name="port_number" type="Rpi::VisListener"/>
+      </args>
+    </event>
+    <event component="vis" name="VisCleared" id="0x189e" severity="ACTIVITY_LO" format_string="Vision pipeline has been cleared">
+      <args/>
+    </event>
+    <event component="vis" name="VisPipe" id="0x189f" severity="ACTIVITY_LO" format_string="Added %s to vision pipeline">
+      <args>
+        <arg name="pipe" type="Rpi::VisPipe"/>
+      </args>
+    </event>
+    <event component="vis" name="VisRecord" id="0x18a0" severity="ACTIVITY_LO" format_string="Vis recording starting for DP %s">
+      <args>
+        <arg name="filename" len="80" type="string"/>
+      </args>
+    </event>
+    <event component="vis" name="VisAlreadyRecording" id="0x18a1" severity="WARNING_LO" format_string="Vis is already recording a vision data product">
+      <args/>
+    </event>
+    <event component="vis" name="VisRecordWriteFailed" id="0x18a2" severity="WARNING_HI" format_string="Failed to write Vis DP %s">
+      <args>
+        <arg name="filename" len="80" type="string"/>
+      </args>
+    </event>
+    <event component="vis" name="VisRecordWritten" id="0x18a3" severity="ACTIVITY_HI" format_string="Wrote Vis DP %s">
+      <args>
+        <arg name="filename" len="80" type="string"/>
+      </args>
+    </event>
+    <event component="vis" name="VisCalibrationLoaded" id="0x18a4" severity="ACTIVITY_LO" format_string="Vis loaded calibration file %s">
+      <args>
+        <arg name="filename" len="80" type="string"/>
+      </args>
+    </event>
+    <event component="vis" name="VisCalibrationFailed" id="0x18a5" severity="WARNING_HI" format_string="Vis failed to load calibration file %s">
+      <args>
+        <arg name="filename" len="80" type="string"/>
+      </args>
+    </event>
+    <event component="vis" name="VisPipelineFailed" id="0x18a6" severity="WARNING_HI" format_string="Vis failed to add pipeline %s">
+      <args>
+        <arg name="pipe_name" type="Rpi::VisPipe"/>
+      </args>
+    </event>
+    <event component="nav" name="NavStarting" id="0x1900" severity="ACTIVITY_HI" format_string="Start Nav algorithm %s">
+      <args>
+        <arg name="algorithm" type="Rpi::NavAlgorithmType"/>
+      </args>
+    </event>
+    <event component="nav" name="NavStartFailed" id="0x1901" severity="WARNING_HI" format_string="Failed to start Nav algorithm %s">
+      <args>
+        <arg name="algorithm" type="Rpi::NavAlgorithmType"/>
+      </args>
+    </event>
+    <event component="nav" name="NavStopping" id="0x1902" severity="ACTIVITY_HI" format_string="Stopping Nav algorithm %s">
+      <args>
+        <arg name="algorithm" type="Rpi::NavAlgorithmType"/>
+      </args>
+    </event>
+    <event component="nav" name="NavNoAlgorithmRunning" id="0x1903" severity="WARNING_LO" format_string="Couldn't stop Nav algorithm as none was running">
+      <args/>
+    </event>
+    <event component="nav" name="NavCanceling" id="0x1904" severity="WARNING_LO" format_string="Canceling running nav algorithm %s in favour of %s">
+      <args>
+        <arg name="canceling" type="Rpi::NavAlgorithmType"/>
+        <arg name="favourable" type="Rpi::NavAlgorithmType"/>
+      </args>
+    </event>
+  </events>
+  <channels>
+    <channel component="cmdDisp" name="CommandsDispatched" id="0x190" description="Number of commands dispatched" type="U32"/>
+    <channel component="cmdDisp" name="CommandErrors" id="0x191" description="Number of command errors" type="U32"/>
+    <channel component="fileManager" name="CommandsExecuted" id="0x2bc" description="The total number of commands successfully executed" type="U32"/>
+    <channel component="fileManager" name="Errors" id="0x2bd" description="The total number of errors" type="U32"/>
+    <channel component="cmdSeq" name="CS_LoadCommands" id="0x320" description="The number of Load commands executed" type="U32"/>
+    <channel component="cmdSeq" name="CS_CancelCommands" id="0x321" description="The number of Cancel commands executed" type="U32"/>
+    <channel component="cmdSeq" name="CS_Errors" id="0x322" description="The number of errors that have occurred" type="U32"/>
+    <channel component="cmdSeq" name="CS_CommandsExecuted" id="0x323" description="The number of commands executed across all sequences." type="U32"/>
+    <channel component="cmdSeq" name="CS_SequencesCompleted" id="0x324" description="The number of sequences completed." type="U32"/>
+    <channel component="rg1hz" name="RgMaxTime" id="0x4b0" format_string="%u us" description="Max execution time rate group" type="U32"/>
+    <channel component="rg1hz" name="RgCycleSlips" id="0x4b1" description="Cycle slips for rate group" type="U32"/>
+    <channel component="rg10hz" name="RgMaxTime" id="0x514" format_string="%u us" description="Max execution time rate group" type="U32"/>
+    <channel component="rg10hz" name="RgCycleSlips" id="0x515" description="Cycle slips for rate group" type="U32"/>
+    <channel component="rg20hz" name="RgMaxTime" id="0x578" format_string="%u us" description="Max execution time rate group" type="U32"/>
+    <channel component="rg20hz" name="RgCycleSlips" id="0x579" description="Cycle slips for rate group" type="U32"/>
+    <channel component="rg50hz" name="RgMaxTime" id="0x5dc" format_string="%u us" description="Max execution time rate group" type="U32"/>
+    <channel component="rg50hz" name="RgCycleSlips" id="0x5dd" description="Cycle slips for rate group" type="U32"/>
+    <channel component="fileUplink" name="FilesReceived" id="0x10cc" description="The total number of complete files received" type="U32"/>
+    <channel component="fileUplink" name="PacketsReceived" id="0x10cd" description="The total number of packets received" type="U32"/>
+    <channel component="fileUplink" name="Warnings" id="0x10ce" description="The total number of warnings issued" type="U32"/>
+    <channel component="fileUplinkBufferManager" name="TotalBuffs" id="0x1130" description="The total buffers allocated" type="U32"/>
+    <channel component="fileUplinkBufferManager" name="CurrBuffs" id="0x1131" description="The current number of allocated buffers" type="U32"/>
+    <channel component="fileUplinkBufferManager" name="HiBuffs" id="0x1132" description="The high water mark of allocated buffers" type="U32"/>
+    <channel component="fileUplinkBufferManager" name="NoBuffs" id="0x1133" description="The number of requests that couldn't return a buffer" high_red="1" type="U32"/>
+    <channel component="fileUplinkBufferManager" name="EmptyBuffs" id="0x1134" description="The number of empty buffers returned" high_red="1" type="U32"/>
+    <channel component="fileDownlink" name="FilesSent" id="0x1194" description="The total number of files sent" type="U32"/>
+    <channel component="fileDownlink" name="PacketsSent" id="0x1195" description="The total number of packets sent" type="U32"/>
+    <channel component="fileDownlink" name="Warnings" id="0x1196" description="The total number of warnings" type="U32"/>
+    <channel component="serialDriver" name="DR_BytesSent" id="0x13ec" description="Bytes Sent" type="U32"/>
+    <channel component="serialDriver" name="DR_BytesRecv" id="0x13ed" description="Bytes Received" type="U32"/>
+    <channel component="cam" name="FramesCapture" id="0x1770" format_string="%d frames capture" type="U32"/>
+    <channel component="cam" name="FramesDropped" id="0x1771" format_string="%d frames dropped" type="U32"/>
+    <channel component="videoStreamer" name="FramesPerSecond" id="0x1838" description="Frame output rate" type="F64"/>
+    <channel component="videoStreamer" name="FramesTotal" id="0x1839" description="Total number of frames sent to the video streamer" type="U32"/>
+    <channel component="videoStreamer" name="PacketsSent" id="0x183a" description="Number of UDP packets send to server" type="U32"/>
+    <channel component="vis" name="FramesIn" id="0x189c" format_string="%d frames input into pipeline" type="U32"/>
+    <channel component="vis" name="FramesFailed" id="0x189d" format_string="%d frames failed in the pipeline" type="U32"/>
+    <channel component="vis" name="FramesPassed" id="0x189e" format_string="%d frames passed through pipeline" type="U32"/>
+    <channel component="nav" name="FramesIn" id="0x1900" format_string="%d frames input into pipeline" type="U32"/>
+    <channel component="nav" name="FramesFailed" id="0x1901" format_string="%d frames failed in the pipeline" type="U32"/>
+    <channel component="nav" name="FramesPassed" id="0x1902" format_string="%d frames passed through pipeline" type="U32"/>
+  </channels>
+  <parameters>
+    <parameter component="cam" name="FRAME_RATE" id="0x1770" default="30"/>
+    <parameter component="cam" name="EXPOSURE_TIME" id="0x1771" default="0"/>
+    <parameter component="cam" name="GAIN" id="0x1772" default="10.0"/>
+    <parameter component="cam" name="METERING_MODE" id="0x1773" default="METERING_CENTRE_WEIGHTED"/>
+    <parameter component="cam" name="EXPOSURE_MODE" id="0x1774" default="EXPOSURE_NORMAL"/>
+    <parameter component="cam" name="AWB" id="0x1775" default="AWB_AUTO"/>
+    <parameter component="cam" name="EV" id="0x1776" default="0.0"/>
+    <parameter component="cam" name="AWB_GAIN_R" id="0x1777" default="0.0"/>
+    <parameter component="cam" name="AWB_GAIN_B" id="0x1778" default="0.0"/>
+    <parameter component="cam" name="BRIGHTNESS" id="0x1779" default="0.0"/>
+    <parameter component="cam" name="CONTRAST" id="0x177a" default="1.0"/>
+    <parameter component="cam" name="SATURATION" id="0x177b" default="1.0"/>
+    <parameter component="cam" name="SHARPNESS" id="0x177c" default="1.0"/>
+    <parameter component="cam" name="DENOISE" id="0x177d" default="DENOISE_FAST"/>
+    <parameter component="videoStreamer" name="HOSTNAME" id="0x1838" default="192.168.1.220"/>
+    <parameter component="videoStreamer" name="PORT" id="0x1839" default="8000"/>
+    <parameter component="vis" name="POSE_CALIB_COL" id="0x189c" default="9"/>
+    <parameter component="vis" name="POSE_CALIB_ROW" id="0x189d" default="6"/>
+    <parameter component="vis" name="CALIBRATION" id="0x189e" default="/fsw/data/pose_calibration.dat"/>
+    <parameter component="vis" name="OTSU_FRAMES" id="0x189f" default="30"/>
+    <parameter component="vis" name="GAUSSIAN_SIGMA" id="0x18a0" default="2"/>
+    <parameter component="vis" name="WARP_CALIBRATION" id="0x18a1" default="/fsw/data/warp_calibration.dat"/>
+    <parameter component="vis" name="DOWNSCALE" id="0x18a2" default="1"/>
+    <parameter component="vis" name="INTERPOLATION" id="0x18a3" default="Rpi::VisInterpolation::NEAREST"/>
+    <parameter component="vis" name="WARP_SCALE_X" id="0x18a4" default="1.0"/>
+    <parameter component="vis" name="WARP_SCALE_Y" id="0x18a5" default="1.0"/>
+    <parameter component="vis" name="WARP_TRANSLATE_X" id="0x18a6" default="0.0"/>
+    <parameter component="vis" name="WARP_TRANSLATE_Y" id="0x18a7" default="0.0"/>
+    <parameter component="nav" name="SCAN_ROW" id="0x1900" default="0.5"/>
+    <parameter component="nav" name="SCAN_STEP" id="0x1901" default="0.05"/>
+    <parameter component="nav" name="SCAN_DISCONTINUITY_THRESH_1" id="0x1902" default="10"/>
+    <parameter component="nav" name="SCAN_DISCONTINUITY_THRESH_2" id="0x1903" default="5"/>
+    <parameter component="nav" name="PID_P" id="0x1905" default="0.5"/>
+    <parameter component="nav" name="PID_I" id="0x1906" default="0.5"/>
+    <parameter component="nav" name="PID_D" id="0x1907" default="0.5"/>
+    <parameter component="nav" name="PID_T" id="0x1908" default="0.5"/>
+    <parameter component="nav" name="PID_STEERING_TIME" id="0x1909" default="0.5"/>
+    <parameter component="nav" name="PID_THROTTLE_TIME" id="0x190a" default="2.0"/>
+    <parameter component="nav" name="CONTOUR_RHO" id="0x190b" default="1"/>
+    <parameter component="nav" name="CONTOUR_THETA" id="0x190c" default="180"/>
+    <parameter component="nav" name="CONTOUR_THRESHOLD" id="0x190d" default="15"/>
+    <parameter component="nav" name="CONTOUR_MIN_LINE_LENGTH" id="0x190e" default="50"/>
+    <parameter component="nav" name="CONTOUR_MAX_LINE_GAP" id="0x190f" default="20"/>
+  </parameters>
+</dictionary>
