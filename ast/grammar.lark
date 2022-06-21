@@ -11,8 +11,13 @@ HEX_NUMBER: /0x[\da-f]*l?/i
 %ignore WS_INLINE
 %ignore COMMENT
 
+// TODO(tumbar) Do we want to comment with '//' and ';'?
 // '//' or ';' will command to new line
-COMMENT: /(\/\/|;)[^\n]*/
+// COMMENT: /(\/\/|;)[^\n]*/
+
+// Python style comments
+COMMENT: /#[^\n]*/
+
 _NEWLINE: ( /\r?\n[\t ]*/ | COMMENT )+
 // MULTILINE_COMMENT: /\/\*(\*(?!\/)|[^*])*\*\//
 
@@ -67,14 +72,15 @@ while_stmt: "while" expr ":" suite
 // operations as needed. These are reduced before the
 // main expressions are reduced
 
+?call_expr: CNAME "(" [expr ( "," expr )*] ")" -> function_call
+          | CNAME "." CNAME "(" [expr ( "," expr )*] ")" -> command_call
+
 ?expr_primary: "(" expr ")"
-            | CNAME "(" [expr ( "," expr )*] ")" -> call
-            | command
+            | call_expr
             | "(" type ")" expr -> cast
 
-command_name: CNAME "." CNAME // component.COMMAND_NAME
-command: command_name (expr)* // any expression can be an argument
-                              // Runtime time mismatches may occur if call expression is used
+//command: command_name (expr)* // any expression can be an argument
+//                              // Runtime time mismatches may occur if call expression is used
 
 ?expr_literal: FLOAT -> lit_float
     | INT -> lit_int
