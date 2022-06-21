@@ -46,14 +46,15 @@ type: "U8" -> u8
     | "F64" -> f64
     | "bool" -> bool
     | "string" -> string
-    | "bytes" -> bytes
+    | "void" -> void
+
 
 variable_decl: CNAME ":" type
 
 ?suite: simple_stmt | _NEWLINE _INDENT (stmt)+ _DEDENT
 
-function_args: [variable_decl ("," variable_decl)*]
-function_decl: "def" CNAME "(" function_args ")" "->" (type | "void") ":" suite
+function_args: variable_decl ("," variable_decl)*
+function_decl: "def" CNAME "(" function_args? ")" "->" type ":" suite
 
 if_clause: "if" expr ":" suite
 elif_clause: "elif" expr ":" suite

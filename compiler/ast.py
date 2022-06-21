@@ -1,29 +1,41 @@
+import enum
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, Callable, Union, Optional, List, Tuple
+from typing import Dict, Callable, Union, Optional, List, Tuple, cast
 
-from lark import tree, Lark
+from lark import tree, Lark, Token
 from lark.indenter import Indenter
 
-from compiler import ir, instructions
-from compiler.common import Value, AstException
-from compiler.type import Type, INTEGRAL_TYPES
+from compiler.common import AstException, ContextBuilder, Variable, Value
+from compiler.type import Type
+
+from llvmlite import ir
+
+Location = Union[tree.Tree, Token]
 
 
-Location = Union[tree.Tree, tree.Token]
+def _label_suffix(label: str, suffix: str) -> str:
+    if len(label) > 50:
+        nhead = 25
+        return ''.join([label[:nhead], '..', suffix])
+    else:
+        return label + suffix
 
 
-class Ast(ABC):
+class Ast(Value, ABC):
     ast: tree.Tree
     ast_builder: 'AstBuilder'
 
-    def __init__(self, ast: tree.Tree,
+    def __init__(self,
+                 ty: Type,
+                 ast: tree.Tree,
                  ast_builder: 'AstBuilder'):
+        Value.__init__(self, ty)
         self.ast = ast
         self.ast_builder = ast_builder
 
     @abstractmethod
-    def build(self, builder: ir.Builder) -> Optional[Value]:
+    def build(self, builder: ir.IRBuilder) -> Optional[ir.Value]:
         """
         Build IR given an AST
         :param builder: IR builder
@@ -102,7 +114,9 @@ class AstBuilder:
         DEDENT_type = '_DEDENT'
         tab_len = 8
 
-    builder: ir.Builder
+    context_builder: ContextBuilder
+    module: ir.Module
+    builder: ir.IRBuilder
 
     file: AstFile
     ast: tree.Tree
@@ -115,12 +129,15 @@ class AstBuilder:
     _AST_HANDLERS: Dict[str, Callable[[tree.Tree, 'AstBuilder'], Ast]]
 
     def __init__(self, file: AstFile, use_cached: bool = True):
-        self.builder = ir.Builder()
+        self.context_builder = ContextBuilder()
+        self.module = ir.Module(file.filename)
+        self.builder = ir.IRBuilder()
+
         self.file = file
         if use_cached:
             raise NotImplementedError
         else:
-            curr_path = Path(__file__).parent.parent
+            curr_path = Path(__file__).parent
             parser = Lark((curr_path.parent / "ast/grammar.lark").open("r").read(),
                           parser="lalr", postlex=AstBuilder.TreeIndenter())
             self.ast = parser.parse(self.file.contents)
@@ -129,7 +146,10 @@ class AstBuilder:
         self.function_context = None
 
         self._AST_HANDLERS = {
+            "decl_assign": DeclAssign,
             "variable_decl": VariableDecl,
+            "assign": Assign,
+            "CNAME": VarExpr,
             "lt": BinaryExpr,
             "gt": BinaryExpr,
             "le": BinaryExpr,
@@ -148,9 +168,14 @@ class AstBuilder:
             "lit_true": ConstExpr,
             "lit_false": ConstExpr,
 
+            "function_decl": FunctionDecl,
+            "start": Suite,
             "suite": Suite,
             "while_stmt": WhileStmt,
-            "if_stmt": IfStmt
+            "if_stmt": IfStmt,
+            "continue": ContinueStmt,
+            "break": BreakStmt,
+            "pass": PassStmt,
         }
 
     def emit_error(self, message: AstException):
@@ -172,153 +197,208 @@ class AstBuilder:
         return self._AST_HANDLERS[ast.data](ast, self)
 
 
-class VariableDecl(Ast):
-    token: tree.Token
-    variable: ir.Variable
+class ConstExpr(Ast):
+    value: Union[float, int, str, bool]
 
     def __init__(self, ast: tree.Tree, ast_builder: AstBuilder):
-        super().__init__(ast, ast_builder)
+        ty: Type
 
-        self.token: tree.Token = ast.children[0]
-        self.variable = ir.Variable(self.token)
+        if ast.data == "lit_float":
+            self.value = float(ast.children[0].value)
+            ty = Type.f64
+        elif ast.data == "lit_int":
+            self.value = int(ast.children[0].value)
+            ty = Type.i32
+        elif ast.data == "lit_string":
+            self.value = str(ast.children[0].value)
+            ty = Type.string
+        elif ast.data == "lit_true":
+            self.value = True
+            ty = Type.boolean
+        elif ast.data == "lit_false":
+            self.value = False
+            ty = Type.boolean
+        else:
+            assert False, ast.pretty()
 
-    def build(self, builder: ir.Builder) -> Optional[Value]:
-        already_exists = builder.context.find(self.token.value)
-        assert already_exists is None, self.token.value
+        Ast.__init__(self, ty, ast, ast_builder)
 
-        # Variable decl should not return a value
-        builder.context.variables[self.token.value] = self.variable
+    def build(self, builder: ir.IRBuilder) -> Optional[ir.Value]:
+        return ir.Constant(self.ty.lower(), self.value)
+
+
+class VariableDecl(Ast):
+    token: Token
+    variable: Variable
+
+    def __init__(self, ast: tree.Tree, ast_builder: AstBuilder):
+        self.token: Token = ast.children[0]
+        super().__init__(Type[ast.children[1].data], ast, ast_builder)
+
+    def build(self, builder: ir.IRBuilder) -> Optional[ir.Value]:
+        # Add the variable to the module
+        # ...or create an alloca for locals
+        self.variable.build(builder)
+        return None  # decls should not return values
+
+
+class DeclAssign(VariableDecl):
+    assign: Ast
+
+    def __init__(self, ast: tree.Tree, ast_builder: AstBuilder):
+        VariableDecl.__init__(self, ast.children[0], ast_builder)
+        self.assign = ast_builder.lower(ast.children[1])
+
+    def build(self, builder: ir.IRBuilder) -> Optional[ir.Value]:
+        # Build the decl first
+        VariableDecl.build(self, builder)
+
+        # Store the value into the variable
+        builder.store(self.assign.build(builder), self.variable.ir_value)
+
         return None
 
 
+class VarExpr(Ast):
+    variable: Optional[Variable]
+
+    def __init__(self, ast: tree.Tree, ast_builder: AstBuilder):
+        ast_token: Token = cast(Token, ast)
+        self.variable = ast_builder.context_builder.find(ast_token.value)
+
+        # Search for a previous decl in the context
+        # If not defined, default to int
+        if self.variable:
+            Ast.__init__(self, self.variable.ty, ast, ast_builder)
+        else:
+            self.ast_builder.emit_error(AstException("", ast))
+            Ast.__init__(self, Type.i32, ast, ast_builder)
+
+    def build(self, builder: ir.IRBuilder) -> Optional[ir.Value]:
+        # Load the value from memory
+        return builder.load(self.variable.ir_value)
+
+
+class Assign(VarExpr):
+    def __init__(self, ast: tree.Tree, ast_builder: AstBuilder):
+        VarExpr.__init__(self, ast, ast_builder)
+        self.assign = ast_builder.lower(ast.children[1])
+
+    def build(self, builder: ir.IRBuilder) -> Optional[ir.Value]:
+        value_to_assign = self.assign.build(builder)
+        builder.store(self.variable.ir_value, value_to_assign)
+        return value_to_assign
+
+
 class BinaryExpr(Ast):
+    # noinspection PyArgumentList
+    class Opcode(enum.IntEnum):
+        # Compare operations
+        LT = enum.auto()
+        GT = enum.auto()
+        LE = enum.auto()
+        GE = enum.auto()
+        EQ = enum.auto()
+        NEQ = enum.auto()
+
+        # Logical binary operations
+        AND = enum.auto()
+        OR = enum.auto()
+
+        # Arithmetic binary operations
+        DIV = enum.auto()
+        MUL = enum.auto()
+        ADD = enum.auto()
+        SUB = enum.auto()
+
+        @staticmethod
+        def cmp_wrapper(operator: str):
+            def cmp_runner(builder: ir.IRBuilder, lhs: Ast, rhs: Ast):
+                if lhs.ty.is_signed:
+                    return builder.icmp_signed(operator, lhs.build(builder), rhs.build(builder))
+                elif lhs.ty.is_unsigned:
+                    return builder.icmp_unsigned(operator, lhs.build(builder), rhs.build(builder))
+                elif lhs.ty.is_floating:
+                    return builder.fcmp_ordered(operator, lhs.build(builder), rhs.build(builder))
+                else:
+                    assert False, lhs.ty
+
+            return cmp_runner
+
+        @staticmethod
+        def arith_wrapper(fcall: Callable[[ir.IRBuilder, ir.Value, ir.Value],
+                                          ir.instructions.Instruction],
+                          icall: Callable[[ir.IRBuilder, ir.Value, ir.Value],
+                                          ir.instructions.Instruction]):
+            def arith_runner(builder: ir.IRBuilder, lhs: Ast, rhs: Ast):
+                if lhs.ty.is_integer:
+                    return icall(builder, lhs.build(builder), rhs.build(builder))
+                elif lhs.ty.is_floating:
+                    return fcall(builder, lhs.build(builder), rhs.build(builder))
+                else:
+                    assert False, lhs.ty
+
+            return arith_runner
+
+        @staticmethod
+        def div_helper(builder: ir.IRBuilder, lhs: Ast, rhs: Ast):
+            if lhs.ty.is_signed:
+                return builder.sdiv(lhs.build(builder), rhs.build(builder))
+            elif lhs.ty.is_unsigned:
+                return builder.udiv(lhs.build(builder), rhs.build(builder))
+            elif lhs.ty.is_floating:
+                return builder.fdiv(lhs.build(builder), rhs.build(builder))
+            else:
+                assert False, lhs.ty
+
     lhs: Ast
     rhs: Ast
 
     operation: str
-    opcode: instructions.Opcode
+    opcode: Opcode
+
+    __LOWERING__: Dict['BinaryExpr.Opcode', Callable[[ir.IRBuilder, Ast, Ast],
+                                                     ir.instructions.Instruction]] = {
+        Opcode.LT: Opcode.cmp_wrapper("<"),
+        Opcode.GT: Opcode.cmp_wrapper(">"),
+        Opcode.LE: Opcode.cmp_wrapper("<="),
+        Opcode.GE: Opcode.cmp_wrapper(">="),
+        Opcode.EQ: Opcode.cmp_wrapper("=="),
+        Opcode.NEQ: Opcode.cmp_wrapper("!="),
+        Opcode.ADD: Opcode.arith_wrapper(ir.IRBuilder.add, ir.IRBuilder.fadd),
+        Opcode.SUB: Opcode.arith_wrapper(ir.IRBuilder.sub, ir.IRBuilder.fsub),
+        Opcode.MUL: Opcode.arith_wrapper(ir.IRBuilder.mul, ir.IRBuilder.fmul),
+        Opcode.DIV: Opcode.div_helper,
+    }
 
     def __init__(self, ast: tree.Tree, ast_builder: AstBuilder):
-        super().__init__(ast, ast_builder)
-
         self.lhs = ast_builder.lower(ast.children[0])
         self.rhs = ast_builder.lower(ast.children[1])
 
         self.operation = ast.data
-        self.opcode = instructions.Opcode[self.operation]
+        self.opcode = BinaryExpr.Opcode[self.operation]
 
-        assert self.opcode in instructions.LOGICAL_BINARY or \
-               self.opcode in instructions.ARITHMETIC_BINARY, self.opcode
+        super().__init__(self.lhs.ty, ast, ast_builder)
 
-    def _validate_logical(self, lhs: instructions.Value, rhs: instructions.Value):
-        # Now validate the input types
-        if lhs.ty in INTEGRAL_TYPES and rhs.ty in INTEGRAL_TYPES:
-            # These can always be compared
-            pass
-        elif Type.bool in (lhs.ty, rhs.ty):
-            if lhs.ty != rhs.ty:
-                raise AstException("bool only supports operations with other bools", self.ast)
-        elif Type.string in (lhs.ty, rhs.ty):
-            if self.opcode not in (instructions.Opcode.EQ, instructions.Opcode.NEQ):
-                raise AstException("string only supports '==' and '!='", self.ast)
-            if lhs.ty != rhs.ty:
-                raise AstException("string only supports operations with other string", self.ast)
-        else:
-            assert Type.bytes in (lhs.ty, rhs.ty), (lhs.ty, rhs.ty)
-            # TODO(tumbar) Do we want to annotate left or right (or just the whole thing)
-            raise AstException("Cannot perform logical operation on bytes", self.ast)
-
-    def _validate_arithmetic(self, lhs: instructions.Value, rhs: instructions.Value):
-        if lhs.ty in INTEGRAL_TYPES and rhs.ty in INTEGRAL_TYPES:
-            # These can always be operated on
-            pass
-        else:
-            raise AstException("Only integral types are support for arithmetic operations", self.ast)
-
-    def build(self, builder: ir.Builder) -> Optional[Value]:
-        reg_l = self.lhs.build(builder).as_register(builder)
-        reg_r = self.rhs.build(builder).as_register(builder)
-
-        # Validate generated types
-        if self.opcode in instructions.LOGICAL_BINARY:
-            self._validate_logical(reg_l, reg_r)
-        else:
-            assert self.opcode in instructions.ARITHMETIC_BINARY
-            self._validate_arithmetic(reg_l, reg_r)
-
-        instr: instructions.Instruction
+    def build(self, builder: ir.IRBuilder) -> Optional[ir.Value]:
         try:
-            instr = instructions.BinaryOp(self.opcode, reg_l, reg_r)
+            return BinaryExpr.__LOWERING__[self.opcode](builder, self.lhs, self.rhs)
         except Exception as e:
-            ast_exception = AstException(str(e), self.ast)
-            self.ast_builder.emit_error(ast_exception)
-            raise ast_exception
-
-        return builder.append(instr)
-
-
-class ConstExpr(ir.Constant, Ast):
-    def __init__(self, ast: tree.Tree, ast_builder: AstBuilder):
-        Ast.__init__(self, ast, ast_builder)
-
-        value: Union[str, float, int, bool]
-        ty: Type
-
-        if ast.data == "lit_float":
-            value = float(ast.children[0].value)
-            ty = Type.f64
-        elif ast.data == "lit_int":
-            value = int(ast.children[0].value)
-            ty = Type.i32
-        elif ast.data == "lit_string":
-            value = str(ast.children[0].value)
-            ty = Type.string
-        elif ast.data == "lit_true":
-            value = True
-            ty = Type.bool
-        elif ast.data == "lit_false":
-            value = False
-            ty = Type.bool
-        else:
-            assert False, ast.pretty()
-
-        ir.Constant.__init__(self, value, ty)
-
-    def build(self, builder: ir.Builder) -> Optional[Value]:
-        # Strings need to be stored in constant data
-        if self.ty == Type.string:
-            builder.const_data.append(self)
-
-        return self
-
-
-class VarExpr(Ast):
-    variable_name: str
-
-    def __init__(self, ast: tree.Tree, ast_builder: AstBuilder):
-        Ast.__init__(self, ast, ast_builder)
-
-        ast: tree.Token
-        self.variable_name = ast.value
-
-    def build(self, builder: ir.Builder) -> Optional[Value]:
-        v = builder.context.find(self.variable_name)
-        assert v is not None, self.variable_name
-        return v
+            raise AstException(str(e), self.ast) from e
 
 
 class Suite(Ast):
     statements: List[Ast]
 
     def __init__(self, ast: tree.Tree, ast_builder: AstBuilder):
-        Ast.__init__(self, ast, ast_builder)
+        Ast.__init__(self, Type.void, ast, ast_builder)
 
         self.statements = []
         for s in ast.children:
             self.statements.append(ast_builder.lower(s))
 
-    def build(self, builder: ir.Builder) -> Optional[Value]:
-        builder.push_context()
+    def build(self, builder: ir.IRBuilder):
+        self.ast_builder.context_builder.push_context()
         for s in self.statements:
             # We are able to emit one error per line
             try:
@@ -330,7 +410,7 @@ class Suite(Ast):
                 # Annotate the entire line
                 self.ast_builder.emit_error(AstException(str(e), s.ast))
 
-        builder.pop_context()
+        self.ast_builder.context_builder.pop_context()
         return None
 
 
@@ -339,47 +419,41 @@ class WhileStmt(Ast):
     loop: Ast
 
     def __init__(self, ast: tree.Tree, ast_builder: AstBuilder):
-        Ast.__init__(self, ast, ast_builder)
+        Ast.__init__(self, Type.void, ast, ast_builder)
 
         self.expr = ast_builder.lower(ast.children[0])
         self.loop = ast_builder.lower(ast.children[1])
 
-    def build(self, builder: ir.Builder) -> Optional[Value]:
-        loop_start = builder.create_label()
-        loop_end = builder.create_label()
+    def build(self, builder: ir.IRBuilder):
+        bb = builder.block
+        bb_while_check = builder.append_basic_block(name=_label_suffix(bb.name, '.while_c'))
+        bb_while_body = builder.append_basic_block(name=_label_suffix(bb.name, '.while_b'))
+        bb_endwhile = builder.append_basic_block(name=_label_suffix(bb.name, '.endwhile'))
 
-        loop_block = builder.new_block(chain_block=True)
+        old_loops = self.ast_builder.context_builder.loop_labels
 
-        # Hook the start to the start of the loop block
-        loop_start.hook(loop_block)
+        self.ast_builder.context_builder.loop_labels = (
+            bb_while_check, bb_endwhile
+        )
 
-        old_labels = builder.loop_labels
-        builder.loop_labels = loop_start, loop_end
+        # Build the conditional block
+        with bb_while_check:
+            evaluated_condition = self.expr.build(builder)
+            loop_br = builder.cbranch(evaluated_condition, bb_while_body, bb_endwhile)
 
-        # Perform the expression and store it in a register
-        expr_reg = self.expr.build(builder).as_register(builder)
+            # Loops... uh... loop?
+            # Assume they loop, the scheduler will generate nicer code :)
+            loop_br.set_weights([99, 1])
 
-        if expr_reg.ty != Type.bool:
-            self.ast_builder.emit_warning(AstException("Expression does not return bool, truncating to bool...",
-                                                       self.ast))
+        # Build the loop body
+        with bb_while_body:
+            self.loop.build(builder)
 
-        # Check if the register is true or false
-        # Branch to the end if the condition is false
-        builder.append(instructions.Branch(expr_reg, loop_end, branch_if=False))
-
-        # Place the loop contents in this block
-        self.loop.build(builder)
-
-        # Automatically loop back to the start of the loop
-        # This will recheck the condition
-        builder.append(instructions.Jump(loop_start))
-
-        # This is block that executes after the loop finishes
-        after_loop_block = builder.new_block(False)
-        loop_end.hook(after_loop_block)
+            # Loop-de-loop
+            builder.branch(bb_while_check)
 
         # Restore the old loop labels
-        builder.loop_labels = old_labels
+        self.ast_builder.context_builder.loop_labels = old_loops
 
         return None
 
@@ -398,7 +472,7 @@ class IfStmt(Ast):
     else_clause: Optional[Ast]
 
     def __init__(self, ast: tree.Tree, ast_builder: AstBuilder):
-        Ast.__init__(self, ast, ast_builder)
+        Ast.__init__(self, Type.void, ast, ast_builder)
 
         self.if_clause = IfStmt.IfElifClause(ast.children[0], ast_builder)
         self.elif_clauses = []
@@ -416,67 +490,49 @@ class IfStmt(Ast):
         else:
             self.else_clause = None
 
-    def build(self, builder: ir.Builder) -> Optional[Value]:
-        next_label = builder.create_label()
+    def build(self, builder: ir.IRBuilder) -> Optional[Value]:
+        bb = builder.block
+        bbif = builder.append_basic_block(name=_label_suffix(bb.name, '.if'))
+        bbelse = builder.append_basic_block(name=_label_suffix(bb.name, '.else'))
+        bbend = builder.append_basic_block(name=_label_suffix(bb.name, '.endif'))
 
-        if_reg = self.if_clause.expr.build(builder).as_register(builder)
+        builder.cbranch(self.if_clause.expr.build(builder), bbif, bbelse)
 
-        if if_reg.ty != Type.bool:
-            self.ast_builder.emit_warning(AstException("Expression does not return bool, truncating to bool...",
-                                                       self.if_clause.expr.ast))
-
-        builder.append(instructions.Branch(if_reg, next_label, branch_if=False))
-
-        if_block = builder.new_block(chain_block=True)
-        self.if_clause.if_true.build(builder)
-
-        if_blocks = [if_block]
+        with bbif:
+            self.if_clause.if_true.build(builder)
+            builder.branch(bbend)
 
         for elif_stmt in self.elif_clauses:
-            # Hook the false condition of the last statement here
-            elif_block = builder.new_block(chain_block=False)
-            next_label.hook(elif_block)
-            if_blocks.append(elif_block)
+            bb = bbelse
+            with bbelse:
+                bbif = builder.append_basic_block(name=_label_suffix(bb.name, '.if'))
+                bbelse = builder.append_basic_block(name=_label_suffix(bb.name, '.else'))
 
-            next_label = builder.create_label()
-            elif_reg = elif_stmt.expr.build(builder).as_register(builder)
+                builder.cbranch(elif_stmt.expr.build(builder), bbif, bbelse)
 
-            if elif_reg.ty != Type.bool:
-                self.ast_builder.emit_warning(AstException("Expression does not return bool, truncating to bool...",
-                                                           elif_stmt.expr.ast))
-
-            builder.append(instructions.Branch(elif_reg, next_label, branch_if=False))
-
-            # Add the actual stmt instructions
-            elif_stmt.if_true.build(builder)
+                with bbif:
+                    elif_stmt.if_true.build(builder)
+                    builder.branch(bbend)
 
         if self.else_clause is not None:
-            else_block = builder.new_block(chain_block=False)
-            next_label.hook(else_block)
-            if_blocks.append(else_block)
+            with bbelse:
+                self.else_clause.build(builder)
+                builder.branch(bbend)
 
-            next_label = builder.create_label()
-
-            # Add the actual stmt instructions
-            self.else_clause.build(builder)
-
-        after_if_block = builder.new_block(chain_block=False)
-        next_label.hook(after_if_block)
-
-        for b in if_blocks:
-            b.next = after_if_block
-
+        builder.position_at_end(bbend)
         return None
 
 
 class FunctionDecl(Ast):
     name: str
-    args: List[Tuple[str, VariableDecl]]
+    return_type: Type
+    args: List[VariableDecl]
 
     suite: Ast
+    function: Optional[ir.types.FunctionType]
 
-    def __init__(self, ast: tree.Tree, ast_build: AstBuilder):
-        Ast.__init__(self, ast, ast_build)
+    def __init__(self, ast: tree.Tree, ast_builder: AstBuilder):
+        Ast.__init__(self, Type.void, ast, ast_builder)
 
         if self.ast_builder.function_context is not None:
             self.ast_builder.emit_error(AstException(
@@ -490,19 +546,70 @@ class FunctionDecl(Ast):
         self.name = self.ast.children[0].value
         self.args = []
 
-        for
+        if len(ast.children) == 3:
+            # No arguments
+            self.return_type = Type[ast.children[2].data]
+            self.suite = ast_builder.lower(ast.children[3])
+        else:
+            assert len(ast.children) == 4
+            for arg in ast.children[1]:
+                self.args.append(VariableDecl(arg, ast_builder))
+            self.return_type = Type[ast.children[3].data]
+            self.suite = ast_builder.lower(ast.children[4])
 
+        self.function = None
 
-    def build(self, builder: ir.Builder) -> Optional[Value]:
-        pass
+    def build(self, builder: ir.IRBuilder) -> Optional[Value]:
+        self.function = ir.types.FunctionType(
+            self.return_type.lower()
+        )
 
+        return None
 
 
 class ReturnStmt(Ast):
+    expr: Optional[Ast]
+
     def __init__(self, ast: tree.Tree, ast_build: AstBuilder):
-        Ast.__init__(self, ast, ast_build)
+        Ast.__init__(self, Type.void, ast, ast_build)
 
-        if ast.children
+        if self.ast.children:
+            self.expr = self.ast.children[0]
+        else:
+            self.expr = None
 
-    def build(self, builder: ir.Builder) -> Optional[Value]:
-        pass
+    def build(self, builder: ir.IRBuilder) -> Optional[Value]:
+        if self.expr:
+            builder.ret(self.expr.build(builder))
+        else:
+            builder.ret_void()
+
+        return None
+
+
+class ContinueStmt(Ast):
+    def __init__(self, ast: tree.Tree, ast_build: AstBuilder):
+        Ast.__init__(self, Type.void, ast, ast_build)
+
+    def build(self, builder: ir.IRBuilder) -> Optional[Value]:
+        bb_while_check, _ = self.ast_builder.context_builder.loop_labels
+        builder.branch(bb_while_check)
+        return None
+
+
+class BreakStmt(Ast):
+    def __init__(self, ast: tree.Tree, ast_build: AstBuilder):
+        Ast.__init__(self, Type.void, ast, ast_build)
+
+    def build(self, builder: ir.IRBuilder) -> Optional[Value]:
+        _, bb_while_end = self.ast_builder.context_builder.loop_labels
+        builder.branch(bb_while_end)
+        return None
+
+
+class PassStmt(Ast):
+    def __init__(self, ast: tree.Tree, ast_build: AstBuilder):
+        Ast.__init__(self, Type.void, ast, ast_build)
+
+    def build(self, builder: ir.IRBuilder) -> Optional[Value]:
+        return None
