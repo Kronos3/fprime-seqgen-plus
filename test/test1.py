@@ -1,5 +1,7 @@
-from lark import Lark
+from lark import Lark, ast_utils
 from pathlib import Path
+
+import compiler.ast_transformer
 
 from lark.indenter import Indenter
 
@@ -18,8 +20,13 @@ def main():
 
     parser = Lark((curr_path.parent / "ast/grammar.lark").open("r").read(), parser="lalr", postlex=TreeIndenter())
 
-    ast = parser.parse((curr_path / "test1.seq").open("r").read())
-    print(ast.pretty())
+    tree = parser.parse((curr_path / "test1.seq").open("r").read())
+    print(tree.pretty())
+
+    transformer = ast_utils.create_transformer(compiler.ast_transformer, compiler.ast_transformer.ToAst())
+    ast = transformer.transform(tree)
+
+    print(ast)
 
     return 0
 

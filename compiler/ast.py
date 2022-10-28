@@ -490,8 +490,6 @@ class FunctionDecl(Ast):
         self.name = self.ast.children[0].value
         self.args = []
 
-        for
-
 
     def build(self, builder: ir.Builder) -> Optional[Value]:
         pass

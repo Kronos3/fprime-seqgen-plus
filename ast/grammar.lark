@@ -17,7 +17,8 @@ _NEWLINE: ( /\r?\n[\t ]*/ | COMMENT )+
 // MULTILINE_COMMENT: /\/\*(\*(?!\/)|[^*])*\*\//
 
 
-start: (_NEWLINE | stmt)*
+start: program
+program: (_NEWLINE | stmt)*
 
 ?simple_stmt: small_stmt _NEWLINE
 ?small_stmt: expr
@@ -75,10 +76,10 @@ command_name: CNAME "." CNAME // component.COMMAND_NAME
 command: command_name (expr)* // any expression can be an argument
                               // Runtime time mismatches may occur if call expression is used
 
-?expr_literal: FLOAT -> lit_float
-    | INT -> lit_int
-    | HEX_NUMBER -> lit_int
-    | ESCAPED_STRING -> lit_string
+?expr_literal: FLOAT
+    | INT
+    | HEX_NUMBER
+    | ESCAPED_STRING
     | ("True" | "true" | "TRUE") -> lit_true
     | ("False" | "false" | "FALSE") -> lit_false
 
